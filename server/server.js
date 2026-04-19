@@ -4,7 +4,6 @@ const dotenv = require("dotenv");
 const morgan = require("morgan");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
-
 dotenv.config();
 
 // Connect DB
