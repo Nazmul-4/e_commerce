@@ -5,15 +5,17 @@ const {
   testAuth,
   registerUser,
   loginUser,
+  getMe,
 } = require("../controllers/authController");
 
-// Test route
+const { protect } = require("../middleware/authMiddleware");
+
+// Public routes
 router.get("/test", testAuth);
-
-// Register route
 router.post("/register", registerUser);
-
-// Login route
 router.post("/login", loginUser);
+
+// Protected route
+router.get("/me", protect, getMe);
 
 module.exports = router;

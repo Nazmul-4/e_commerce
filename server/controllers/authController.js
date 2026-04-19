@@ -16,7 +16,7 @@ const registerUser = async (req, res) => {
     }
 
     // Check valid country
-    const allowedCountries = ["BANGLADESH", "INDIA", "CHINA"];
+    const allowedCountries = ["BD", "IN", "CN"];
     if (!allowedCountries.includes(country)) {
       return res.status(400).json({
         success: false,
@@ -121,6 +121,23 @@ const loginUser = async (req, res) => {
   }
 };
 
+// Current logged-in user controller
+const getMe = async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      message: "Current user fetched successfully",
+      user: req.user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get current user",
+      error: error.message,
+    });
+  }
+};
+
 // Test controller
 const testAuth = (req, res) => {
   res.json({
@@ -133,4 +150,6 @@ module.exports = {
   testAuth,
   registerUser,
   loginUser,
+  getMe,
 };
+
