@@ -5,14 +5,25 @@ import DashboardPage from "./pages/DashboardPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
-  return (
-    <BrowserRouter> {/*Set up the router for the application//Wrap the entire app in BrowserRouter to enable routing}*/}
-    
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+  const token = localStorage.getItem("token");
 
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/"
+          element={<Navigate to={token ? "/dashboard" : "/login"} replace />}
+        />
+
+        <Route
+          path="/login"
+          element={token ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+        />
+
+        <Route
+          path="/register"
+          element={token ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
+        />
 
         <Route
           path="/dashboard"

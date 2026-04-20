@@ -1,13 +1,224 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api, { getAuthConfig } from "../services/api";
+
 function DashboardPage() {
+  const navigate = useNavigate();
+
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [keyword, setKeyword] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchMessage, setSearchMessage] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [searchHistory, setSearchHistory] = useState([]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const { data } = await api.get("/auth/me", getAuthConfig());
+      setUser(data.user);
+    } catch (error) {
+      console.error("Failed to fetch current user:", error.message);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      navigate("/login");
+    }
+  };
+
+  const fetchSearchHistory = async () => {
+    try {
+      const { data } = await api.get("/search/my-history", getAuthConfig());
+      setSearchHistory(data.searchJobs || []);
+    } catch (error) {
+      console.error("Failed to fetch search history:", error.message);
+    }
+  };
+
+  const handleCreateSearch = async (e) => {
+    e.preventDefault();
+
+    setSearchMessage("");
+    setSearchError("");
+
+    if (!keyword.trim()) {
+      setSearchError("Please enter a keyword");
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+
+      const { data } = await api.post(
+        "/search",
+        { keyword },
+        getAuthConfig()
+      );
+
+      setSearchMessage(data.message || "Search job created successfully");
+      setKeyword("");
+      fetchSearchHistory();
+    } catch (error) {
+      setSearchError(
+        error.response?.data?.message ||
+          "Failed to create search job. Please try again."
+      );
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      await fetchCurrentUser();
+      await fetchSearchHistory();
+      setLoading(false);
+    };
+
+    loadDashboard();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <p className="text-lg font-medium text-slate-700">Loading dashboard...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-      <div className="bg-white shadow-lg rounded-2xl p-10 text-center max-w-lg w-full">
-        <h1 className="text-3xl font-bold text-slate-800 mb-4">
-          Dashboard
-        </h1>
-        <p className="text-slate-600">
-          Welcome to your country-based product dashboard.
-        </p>
+    <div className="min-h-screen bg-slate-100 p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="bg-white shadow-lg rounded-2xl p-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800">Dashboard</h1>
+              <p className="text-slate-600 mt-2">
+                Welcome to your country-based product dashboard
+              </p>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="bg-red-500 text-white px-5 py-2.5 rounded-xl hover:bg-red-600 transition"
+            >
+              Logout
+            </button>
+          </div>
+
+          {user && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                <h2 className="text-sm text-slate-500 mb-1">Name</h2>
+                <p className="text-lg font-semibold text-slate-800">{user.name}</p>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                <h2 className="text-sm text-slate-500 mb-1">Email</h2>
+                <p className="text-lg font-semibold text-slate-800">{user.email}</p>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                <h2 className="text-sm text-slate-500 mb-1">Country</h2>
+                <p className="text-lg font-semibold text-slate-800">
+                  {user.country}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="border-t pt-8">
+            <h2 className="text-2xl font-bold text-slate-800 mb-4">
+              Search Products
+            </h2>
+
+            <form onSubmit={handleCreateSearch} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Product Keyword
+                </label>
+                <input
+                  type="text"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="Example: smart watch"
+                  className="w-full border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-slate-400"
+                />
+              </div>
+
+              {searchError && (
+                <p className="text-red-600 text-sm font-medium">{searchError}</p>
+              )}
+
+              {searchMessage && (
+                <p className="text-green-600 text-sm font-medium">
+                  {searchMessage}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={searchLoading}
+                className="bg-slate-800 text-white px-6 py-3 rounded-xl hover:bg-slate-900 transition disabled:opacity-50"
+              >
+                {searchLoading ? "Creating Search..." : "Create Search Job"}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="bg-white shadow-lg rounded-2xl p-8">
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">
+            Search History
+          </h2>
+
+          {searchHistory.length === 0 ? (
+            <p className="text-slate-600">No search history found yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {searchHistory.map((job) => (
+                <div
+                  key={job._id}
+                  className="border border-slate-200 rounded-xl p-4 bg-slate-50"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-500">Keyword</p>
+                      <p className="font-semibold text-slate-800">{job.keyword}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">Country</p>
+                      <p className="font-semibold text-slate-800">{job.country}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">Currency</p>
+                      <p className="font-semibold text-slate-800">{job.currency}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">Status</p>
+                      <p className="font-semibold text-slate-800">{job.status}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">Created At</p>
+                      <p className="font-semibold text-slate-800">
+                        {new Date(job.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
