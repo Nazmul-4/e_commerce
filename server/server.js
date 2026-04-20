@@ -5,7 +5,7 @@ const morgan = require("morgan");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 dotenv.config();
-
+const searchRoutes = require("./routes/searchRoutes");
 // Connect DB
 connectDB();
 
@@ -22,13 +22,14 @@ app.use(
 app.use(express.json());
 app.use(morgan("dev"));
 app.use("/api/auth", authRoutes);
+app.use("/api/search", searchRoutes);
 
 
 // Test route
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Server is running successfully",
+    message: "E_Commerce server is running successfully",
   });
 });
 
