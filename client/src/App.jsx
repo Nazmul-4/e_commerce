@@ -1,15 +1,29 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import DashboardPage from "./pages/DashboardPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 function App() {
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-      <div className="bg-white shadow-lg rounded-2xl p-10 text-center">
-        <h1 className="text-3xl font-bold text-slate-800 mb-4">
-          Country Product Analyzer
-        </h1>
-        <p className="text-slate-600">
-          Frontend is running successfully
-        </p>
-      </div>
-    </div>
+    <BrowserRouter> {/*Set up the router for the application//Wrap the entire app in BrowserRouter to enable routing}*/}
+    
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
