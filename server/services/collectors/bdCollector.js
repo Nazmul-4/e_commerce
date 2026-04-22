@@ -1,4 +1,5 @@
 const axios = require("axios");
+const expandKeyword = require("../../utils/expandKeyword");
 
 const collectBDProducts = async (keyword) => {
   try {
@@ -10,15 +11,13 @@ const collectBDProducts = async (keyword) => {
     });
 
     const products = response.data || [];
-    const keywordLower = keyword.toLowerCase();
+    const expandedKeywords = expandKeyword(keyword);
 
     const filteredProducts = products
       .filter((item) => {
-        return (
-          item.title.toLowerCase().includes(keywordLower) ||
-          item.category.toLowerCase().includes(keywordLower) ||
-          item.description.toLowerCase().includes(keywordLower)
-        );
+        const searchableText = `${item.title} ${item.category} ${item.description}`.toLowerCase();
+
+        return expandedKeywords.some((term) => searchableText.includes(term));
       })
       .slice(0, 12)
       .map((item, index) => ({

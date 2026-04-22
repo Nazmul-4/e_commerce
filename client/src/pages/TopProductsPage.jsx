@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import api, { getAuthConfig } from "../services/api";
+import { getSelectedJobId, saveSelectedJobId } from "../utils/selectedJob";
 
 function TopProductsPage() {
   const [searchHistory, setSearchHistory] = useState([]);
@@ -23,6 +24,7 @@ function TopProductsPage() {
       const { data } = await api.get(`/search/${jobId}/top-products`, getAuthConfig());
       setTopProducts(data.topProducts || []);
       setSelectedJobId(jobId);
+      saveSelectedJobId(jobId);
     } catch (error) {
       console.error("Failed to fetch top products:", error.message);
       setTopProducts([]);
@@ -63,7 +65,23 @@ function TopProductsPage() {
   };
 
   useEffect(() => {
-    fetchSearchHistory();
+    const loadPage = async () => {
+      try {
+        const { data } = await api.get("/search/my-history", getAuthConfig());
+        const jobs = data.searchJobs || [];
+        setSearchHistory(jobs);
+
+        const savedJobId = getSelectedJobId();
+
+        if (savedJobId) {
+          await fetchTopProductsByJob(savedJobId);
+        }
+      } catch (error) {
+        console.error("Failed to fetch search history:", error.message);
+      }
+    };
+
+    loadPage();
   }, []);
 
   return (
@@ -119,7 +137,9 @@ function TopProductsPage() {
           ) : loading ? (
             <p className="text-slate-600">Loading top products...</p>
           ) : topProducts.length === 0 ? (
-            <p className="text-slate-600">No top products found.</p>
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4">
+              No top products found for this keyword yet. Generate products first or try another keyword.
+            </div>
           ) : (
             <div className="space-y-4">
               {topProducts.map((product, index) => (
@@ -127,7 +147,16 @@ function TopProductsPage() {
                   key={product._id}
                   className="border border-slate-200 rounded-2xl p-5 bg-slate-50 flex flex-col md:flex-row gap-4 md:items-center"
                 >
-                  <div className="text-2xl font-bold text-emerald-600 min-w-[60px]">
+                  <div
+                    className={`text-2xl font-bold min-w-[60px] ${index === 0
+                      ? "text-yellow-500"
+                      : index === 1
+                        ? "text-slate-500"
+                        : index === 2
+                          ? "text-amber-700"
+                          : "text-emerald-600"
+                      }`}
+                  >
                     #{index + 1}
                   </div>
 

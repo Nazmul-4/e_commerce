@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import api, { getAuthConfig } from "../services/api";
-
+import { saveSelectedJobId } from "../utils/selectedJob";
 function DashboardPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,7 @@ function DashboardPage() {
     } catch (error) {
       setSearchError(
         error.response?.data?.message ||
-          "Failed to create search job. Please try again."
+        "Failed to create search job. Please try again."
       );
     } finally {
       setSearchLoading(false);
@@ -62,6 +62,7 @@ function DashboardPage() {
   const handleGenerateProducts = async (jobId) => {
     try {
       setGenerateLoadingId(jobId);
+      saveSelectedJobId(jobId);
 
       await api.post(`/search/${jobId}/generate-products`, {}, getAuthConfig());
 
@@ -183,7 +184,18 @@ function DashboardPage() {
 
                     <div>
                       <p className="text-xs text-slate-500">Status</p>
-                      <p className="font-semibold text-slate-800">{job.status}</p>
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${job.status === "completed"
+                            ? "bg-green-100 text-green-700"
+                            : job.status === "running"
+                              ? "bg-blue-100 text-blue-700"
+                              : job.status === "pending"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                          }`}
+                      >
+                        {job.status}
+                      </span>
                     </div>
 
                     <div>
