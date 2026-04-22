@@ -1,5 +1,7 @@
 const SearchJob = require("../models/SearchJob");
+const Product = require("../models/Product");
 const countryConfig = require("../config/countryConfig");
+const generateMockProducts = require("../utils/mockProducts");
 
 // Create a new search job
 const createSearchJob = async (req, res) => {
@@ -48,8 +50,9 @@ const createSearchJob = async (req, res) => {
 // Get all search jobs for logged-in user
 const getMySearchJobs = async (req, res) => {
   try {
-    const searchJobs = await SearchJob.find({ userId: req.user._id })
-      .sort({ createdAt: -1 });
+    const searchJobs = await SearchJob.find({ userId: req.user._id }).sort({
+      createdAt: -1,
+    });
 
     return res.status(200).json({
       success: true,
@@ -66,7 +69,99 @@ const getMySearchJobs = async (req, res) => {
   }
 };
 
+// Generate mock products for a search job
+const generateSearchProducts = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const searchJob = await SearchJob.findOne({
+      _id: jobId,
+      userId: req.user._id,
+    });
+
+    if (!searchJob) {
+      return res.status(404).json({
+        success: false,
+        message: "Search job not found",
+      });
+    }
+
+    // Mark running
+    searchJob.status = "running";
+    await searchJob.save();
+
+    // Delete old products for this search job if they exist
+    await Product.deleteMany({ searchJobId: searchJob._id });
+
+    // Generate demo product list
+    const mockProducts = generateMockProducts({
+      keyword: searchJob.keyword,
+      country: searchJob.country,
+      searchJobId: searchJob._id,
+    });
+
+    const savedProducts = await Product.insertMany(mockProducts);
+
+    // Update search job counts
+    searchJob.totalUrlsFound = savedProducts.length;
+    searchJob.totalProductsSaved = savedProducts.length;
+    searchJob.status = "completed";
+    await searchJob.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Mock products generated successfully",
+      totalProducts: savedProducts.length,
+      products: savedProducts,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate products",
+      error: error.message,
+    });
+  }
+};
+
+// Get products by search job
+const getProductsBySearchJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const searchJob = await SearchJob.findOne({
+      _id: jobId,
+      userId: req.user._id,
+    });
+
+    if (!searchJob) {
+      return res.status(404).json({
+        success: false,
+        message: "Search job not found",
+      });
+    }
+
+    const products = await Product.find({ searchJobId: jobId }).sort({
+      createdAt: -1,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Products fetched successfully",
+      total: products.length,
+      products,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch products",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createSearchJob,
   getMySearchJobs,
+  generateSearchProducts,
+  getProductsBySearchJob,
 };
