@@ -4,6 +4,8 @@ const Product = require("../models/Product");
 const countryConfig = require("../config/countryConfig");
 const collectProductsByCountry = require("../services/productCollectorService");
 const calculateScore = require("../utils/calculateScore");
+const filterProducts = require("../utils/filterProducts");
+
 
 // Create a new search job
 const createSearchJob = async (req, res) => {
@@ -99,14 +101,16 @@ const generateSearchProducts = async (req, res) => {
       searchJobId: searchJob._id,
     });
 
-    const productsWithScore = collectedProducts.map((product) => ({
+    const cleanedProducts = filterProducts(collectedProducts);
+
+    const productsWithScore = cleanedProducts.map((product) => ({
       ...product,
       score: calculateScore(product),
     }));
 
     const savedProducts = await Product.insertMany(productsWithScore);
 
-    searchJob.totalUrlsFound = savedProducts.length;
+    searchJob.totalUrlsFound = collectedProducts.length;
     searchJob.totalProductsSaved = savedProducts.length;
     searchJob.status = "completed";
     await searchJob.save();
@@ -230,7 +234,6 @@ const downloadTopProductsReport = async (req, res) => {
     const reportRows = topProducts.map((product, index) => ({
       rank: index + 1,
       title: product.title,
-      priceText: product.priceText,
       priceValue: product.priceValue,
       currency: product.currency,
       rating: product.rating,
@@ -246,7 +249,6 @@ const downloadTopProductsReport = async (req, res) => {
     const fields = [
       "rank",
       "title",
-      "priceText",
       "priceValue",
       "currency",
       "rating",

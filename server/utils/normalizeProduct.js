@@ -1,5 +1,3 @@
-//make sure that all collected products follow the same structure
-
 const countryConfig = require("../config/countryConfig");
 
 const normalizeProduct = ({
@@ -16,15 +14,19 @@ const normalizeProduct = ({
   searchJobId,
 }) => {
   const config = countryConfig[country];
+  const safePriceValue = Number(priceValue) || 0;
 
   return {
     title: title?.trim() || "Unknown Product",
-    priceText: priceText || `${config?.currency || ""} ${priceValue || 0}`,
-    priceValue: Number(priceValue) || 0,
+    priceText: `${config?.currency || "N/A"} ${safePriceValue}`,
+    priceValue: safePriceValue,
     currency: config?.currency || "N/A",
     rating: Number(rating) || 0,
     reviewCount: Number(reviewCount) || 0,
-    image: image || "https://via.placeholder.com/300x200?text=No+Image",
+    image:
+      image && image.trim()
+        ? image
+        : "https://picsum.photos/seed/default-product/300/200",
     sourceSite: sourceSite || "Unknown Source",
     country,
     productUrl: productUrl || "",

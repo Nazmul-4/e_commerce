@@ -396,14 +396,23 @@ function DashboardPage() {
                     <span className="font-semibold">Source:</span> {product.sourceSite}
                   </p>
 
-                  <a
-                    href={product.productUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-block bg-slate-800 text-white px-4 py-2 rounded-xl hover:bg-slate-900 transition"
-                  >
-                    View Product
-                  </a>
+                  {product.productUrl && !product.productUrl.includes("example.com") ? (
+                    <a
+                      href={product.productUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block bg-slate-800 text-white px-4 py-2 rounded-xl hover:bg-slate-900 transition"
+                    >
+                      View Product
+                    </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="inline-block bg-slate-400 text-white px-4 py-2 rounded-xl cursor-not-allowed"
+                    >
+                      Demo Product
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -461,14 +470,23 @@ function DashboardPage() {
                     </p>
                   </div>
 
-                  <a
-                    href={product.productUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-block bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
-                  >
-                    Open
-                  </a>
+                  {product.productUrl && !product.productUrl.includes("example.com") ? (
+                    <a
+                      href={product.productUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
+                    >
+                      Open
+                    </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="inline-block bg-slate-400 text-white px-4 py-2 rounded-xl cursor-not-allowed"
+                    >
+                      Demo Link
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
