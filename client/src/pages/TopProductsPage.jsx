@@ -9,15 +9,6 @@ function TopProductsPage() {
   const [topProducts, setTopProducts] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchSearchHistory = async () => {
-    try {
-      const { data } = await api.get("/search/my-history", getAuthConfig());
-      setSearchHistory(data.searchJobs || []);
-    } catch (error) {
-      console.error("Failed to fetch search history:", error.message);
-    }
-  };
-
   const fetchTopProductsByJob = async (jobId) => {
     try {
       setLoading(true);
@@ -90,124 +81,57 @@ function TopProductsPage() {
 
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">Choose Search Job</h2>
+          <h2 className="text-2xl font-bold mb-4">Choose Search Job</h2>
 
-          {searchHistory.length === 0 ? (
-            <p className="text-slate-600">No search jobs found.</p>
-          ) : (
-            <div className="space-y-3">
-              {searchHistory.map((job) => (
-                <div
-                  key={job._id}
-                  className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-slate-200 rounded-xl p-4"
+          {searchHistory.map((job) => (
+            <div key={job._id} className="flex justify-between p-4 border rounded-xl">
+              <div>
+                <p className="font-semibold">{job.keyword}</p>
+                <p className="text-sm text-slate-500">{job.country} • {job.status}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fetchTopProductsByJob(job._id)}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-xl"
                 >
-                  <div>
-                    <p className="font-semibold text-slate-800">{job.keyword}</p>
-                    <p className="text-sm text-slate-500">
-                      {job.country} • {job.currency} • {job.status}
-                    </p>
-                  </div>
+                  View Top Products
+                </button>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => fetchTopProductsByJob(job._id)}
-                      className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
-                    >
-                      View Top Products
-                    </button>
-
-                    <button
-                      onClick={() => handleDownloadReport(job._id)}
-                      className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition"
-                    >
-                      Download Report
-                    </button>
-                  </div>
-                </div>
-              ))}
+                <button
+                  onClick={() => handleDownloadReport(job._id)}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-xl"
+                >
+                  Download Report
+                </button>
+              </div>
             </div>
-          )}
+          ))}
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">Top Products</h2>
+          <h2 className="text-2xl font-bold mb-4">Top Products</h2>
 
-          {!selectedJobId ? (
-            <p className="text-slate-600">Select a search job first.</p>
-          ) : loading ? (
-            <p className="text-slate-600">Loading top products...</p>
-          ) : topProducts.length === 0 ? (
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4">
-              No top products found for this keyword yet. Generate products first or try another keyword.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {topProducts.map((product, index) => (
-                <div
-                  key={product._id}
-                  className="border border-slate-200 rounded-2xl p-5 bg-slate-50 flex flex-col md:flex-row gap-4 md:items-center"
-                >
-                  <div
-                    className={`text-2xl font-bold min-w-[60px] ${index === 0
-                      ? "text-yellow-500"
-                      : index === 1
-                        ? "text-slate-500"
-                        : index === 2
-                          ? "text-amber-700"
-                          : "text-emerald-600"
-                      }`}
-                  >
-                    #{index + 1}
-                  </div>
+          {topProducts.map((product, index) => (
+            <div key={product._id} className="border p-5 rounded-xl mb-4">
 
-                  <img
-                    src={product.image}
-                    alt={product.title}
-                    className="w-full md:w-32 h-28 object-contain bg-white rounded-xl p-2"
-                  />
-
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-slate-800 mb-1">
-                      {product.title}
-                    </h3>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Price:</span> {product.priceText}
-                    </p>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Rating:</span> {product.rating}
-                    </p>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Reviews:</span> {product.reviewCount}
-                    </p>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Score:</span> {product.score}
-                    </p>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Source:</span> {product.sourceSite}
-                    </p>
-                  </div>
-
-                  {product.productUrl ? (
-                    <a
-                      href={product.productUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-block bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
-                    >
-                      Open Source
-                    </a>
-                  ) : (
-                    <button
-                      disabled
-                      className="inline-block bg-slate-400 text-white px-4 py-2 rounded-xl cursor-not-allowed"
-                    >
-                      No Link
-                    </button>
-                  )}
+              {/* ✅ NEW BADGE */}
+              {index === 0 && (
+                <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs mb-2 inline-block">
+                  🥇 Best Product
                 </div>
-              ))}
+              )}
+
+              <h3 className="font-bold text-lg">{product.title}</h3>
+              <p>Price: {product.priceText}</p>
+              <p>Rating: {product.rating}</p>
+              <p>Score: {product.score}</p>
+
+              <a href={product.productUrl} target="_blank" rel="noreferrer">
+                View
+              </a>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>

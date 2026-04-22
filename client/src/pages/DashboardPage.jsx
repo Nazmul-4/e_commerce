@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import api, { getAuthConfig } from "../services/api";
 import { saveSelectedJobId } from "../utils/selectedJob";
+
 function DashboardPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -11,6 +12,11 @@ function DashboardPage() {
   const [searchError, setSearchError] = useState("");
   const [searchHistory, setSearchHistory] = useState([]);
   const [generateLoadingId, setGenerateLoadingId] = useState("");
+
+  // ✅ FIX: moved inside component
+  const [totalSearches, setTotalSearches] = useState(0);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [topKeyword, setTopKeyword] = useState("");
 
   const fetchCurrentUser = async () => {
     try {
@@ -24,7 +30,31 @@ function DashboardPage() {
   const fetchSearchHistory = async () => {
     try {
       const { data } = await api.get("/search/my-history", getAuthConfig());
-      setSearchHistory(data.searchJobs || []);
+      const jobs = data.searchJobs || [];
+
+      setSearchHistory(jobs);
+
+      // 📊 Stats
+      setTotalSearches(jobs.length);
+
+      const total = jobs.reduce(
+        (sum, job) => sum + (job.totalProductsSaved || 0),
+        0
+      );
+      setTotalProducts(total);
+
+      const keywordMap = {};
+      jobs.forEach((job) => {
+        keywordMap[job.keyword] =
+          (keywordMap[job.keyword] || 0) + 1;
+      });
+
+      const top = Object.keys(keywordMap).reduce(
+        (a, b) => (keywordMap[a] > keywordMap[b] ? a : b),
+        ""
+      );
+
+      setTopKeyword(top || "N/A");
     } catch (error) {
       console.error("Failed to fetch search history:", error.message);
     }
@@ -44,15 +74,21 @@ function DashboardPage() {
     try {
       setSearchLoading(true);
 
-      const { data } = await api.post("/search", { keyword }, getAuthConfig());
+      const { data } = await api.post(
+        "/search",
+        { keyword },
+        getAuthConfig()
+      );
 
-      setSearchMessage(data.message || "Search job created successfully");
+      setSearchMessage(
+        data.message || "Search job created successfully"
+      );
       setKeyword("");
       await fetchSearchHistory();
     } catch (error) {
       setSearchError(
         error.response?.data?.message ||
-        "Failed to create search job. Please try again."
+          "Failed to create search job"
       );
     } finally {
       setSearchLoading(false);
@@ -64,7 +100,11 @@ function DashboardPage() {
       setGenerateLoadingId(jobId);
       saveSelectedJobId(jobId);
 
-      await api.post(`/search/${jobId}/generate-products`, {}, getAuthConfig());
+      await api.post(
+        `/search/${jobId}/generate-products`,
+        {},
+        getAuthConfig()
+      );
 
       await fetchSearchHistory();
     } catch (error) {
@@ -80,14 +120,13 @@ function DashboardPage() {
       await fetchSearchHistory();
       setLoading(false);
     };
-
     loadData();
   }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <p className="text-lg font-medium text-slate-700">Loading dashboard...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        Loading dashboard...
       </div>
     );
   }
@@ -98,127 +137,64 @@ function DashboardPage() {
 
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         <div className="bg-white shadow-lg rounded-2xl p-8">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Dashboard</h1>
-          <p className="text-slate-600 mb-8">
+          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+          <p className="mb-8">
             Create search jobs and generate real product data.
           </p>
 
+          {/* ✅ NEW SUMMARY UI */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-2xl shadow-lg">
+              <h2 className="text-sm opacity-80">Total Searches</h2>
+              <p className="text-3xl font-bold">{totalSearches}</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-2xl shadow-lg">
+              <h2 className="text-sm opacity-80">Total Products</h2>
+              <p className="text-3xl font-bold">{totalProducts}</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
+              <h2 className="text-sm opacity-80">Top Keyword</h2>
+              <p className="text-2xl font-bold">{topKeyword}</p>
+            </div>
+          </div>
+
+          {/* USER INFO */}
           {user && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                <h2 className="text-sm text-slate-500 mb-1">Name</h2>
-                <p className="text-lg font-semibold text-slate-800">{user.name}</p>
-              </div>
-
-              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                <h2 className="text-sm text-slate-500 mb-1">Email</h2>
-                <p className="text-lg font-semibold text-slate-800">{user.email}</p>
-              </div>
-
-              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                <h2 className="text-sm text-slate-500 mb-1">Country</h2>
-                <p className="text-lg font-semibold text-slate-800">{user.country}</p>
-              </div>
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              <div>Name: {user.name}</div>
+              <div>Email: {user.email}</div>
+              <div>Country: {user.country}</div>
             </div>
           )}
 
-          <form onSubmit={handleCreateSearch} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Product Keyword
-              </label>
-              <input
-                type="text"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="Example: shirt, bag, jacket"
-                className="w-full border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-slate-400"
-              />
-            </div>
+          {/* SEARCH FORM */}
+          <form onSubmit={handleCreateSearch}>
+            <input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="Search keyword"
+            />
 
-            {searchError && (
-              <p className="text-red-600 text-sm font-medium">{searchError}</p>
-            )}
-
-            {searchMessage && (
-              <p className="text-green-600 text-sm font-medium">{searchMessage}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={searchLoading}
-              className="bg-slate-800 text-white px-6 py-3 rounded-xl hover:bg-slate-900 transition disabled:opacity-50"
-            >
-              {searchLoading ? "Creating Search..." : "Create Search Job"}
+            <button type="submit">
+              {searchLoading ? "Creating..." : "Create Search"}
             </button>
           </form>
         </div>
 
+        {/* SEARCH HISTORY */}
         <div className="bg-white shadow-lg rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">Search History</h2>
+          <h2 className="text-xl font-bold mb-4">Search History</h2>
 
-          {searchHistory.length === 0 ? (
-            <p className="text-slate-600">No search history found yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {searchHistory.map((job) => (
-                <div
-                  key={job._id}
-                  className="border border-slate-200 rounded-xl p-4 bg-slate-50"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-                    <div>
-                      <p className="text-xs text-slate-500">Keyword</p>
-                      <p className="font-semibold text-slate-800">{job.keyword}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-slate-500">Country</p>
-                      <p className="font-semibold text-slate-800">{job.country}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-slate-500">Currency</p>
-                      <p className="font-semibold text-slate-800">{job.currency}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-slate-500">Status</p>
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${job.status === "completed"
-                            ? "bg-green-100 text-green-700"
-                            : job.status === "running"
-                              ? "bg-blue-100 text-blue-700"
-                              : job.status === "pending"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                          }`}
-                      >
-                        {job.status}
-                      </span>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-slate-500">Products Saved</p>
-                      <p className="font-semibold text-slate-800">{job.totalProductsSaved}</p>
-                    </div>
-
-                    <div>
-                      <button
-                        onClick={() => handleGenerateProducts(job._id)}
-                        disabled={generateLoadingId === job._id}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition disabled:opacity-50"
-                      >
-                        {generateLoadingId === job._id
-                          ? "Generating..."
-                          : "Generate Products"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+          {searchHistory.map((job) => (
+            <div key={job._id}>
+              {job.keyword} - {job.status}
+              <button onClick={() => handleGenerateProducts(job._id)}>
+                Generate
+              </button>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>
