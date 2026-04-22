@@ -5,9 +5,8 @@ const generateToken = require("../utils/generateToken");
 // Register controller
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, country } = req.body;
+    const { name, email, password, country, avatar } = req.body;
 
-    // Check all fields
     if (!name || !email || !password || !country) {
       return res.status(400).json({
         success: false,
@@ -15,7 +14,6 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // Check valid country
     const allowedCountries = ["BD", "IN", "CN"];
     if (!allowedCountries.includes(country)) {
       return res.status(400).json({
@@ -24,7 +22,6 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // Check user already exists
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -34,16 +31,15 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
       country,
+      avatar: avatar || "",
     });
 
     return res.status(201).json({
@@ -54,6 +50,7 @@ const registerUser = async (req, res) => {
         name: user.name,
         email: user.email,
         country: user.country,
+        avatar: user.avatar,
       },
     });
   } catch (error) {
@@ -70,7 +67,6 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check fields
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -78,7 +74,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Find user
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -88,7 +83,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Compare password
     const isPasswordMatched = await bcrypt.compare(password, user.password);
 
     if (!isPasswordMatched) {
@@ -98,7 +92,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Generate token
     const token = generateToken(user);
 
     return res.status(200).json({
@@ -110,6 +103,7 @@ const loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         country: user.country,
+        avatar: user.avatar,
       },
     });
   } catch (error) {
@@ -152,4 +146,3 @@ module.exports = {
   loginUser,
   getMe,
 };
-
