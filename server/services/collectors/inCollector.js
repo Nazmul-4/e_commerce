@@ -1,37 +1,61 @@
 const axios = require("axios");
 const expandKeyword = require("../../utils/expandKeyword");
 
-const collectINProducts = async (keyword) => {
-  try {
-    const response = await axios.get("https://fakestoreapi.com/products", {
+const SOURCE_NAMES = ["Flipkart", "Amazon India", "Croma"];
+
+const mapDummyProducts = (products, currencyMultiplier, currencyCode, sourceNames) => {
+  return products.map((item, index) => {
+    const reviewCount = Array.isArray(item.reviews)
+      ? item.reviews.length
+      : item.stock || 0;
+
+    return {
+      title: item.title,
+      priceText: `${currencyCode} ${Math.round(item.price * currencyMultiplier)}`,
+      priceValue: Math.round(item.price * currencyMultiplier),
+      rating: Number(item.rating) || 0,
+      reviewCount,
+      image: item.thumbnail || item.images?.[0] || "",
+      productUrl: `https://dummyjson.com/products/${item.id}`,
+      sourceSite: sourceNames[index % sourceNames.length],
+    };
+  });
+};
+
+const searchDummyJson = async (term) => {
+  const response = await axios.get(
+    `https://dummyjson.com/products/search?q=${encodeURIComponent(term)}`,
+    {
       timeout: 8000,
       headers: {
         "User-Agent": "Mozilla/5.0",
       },
-    });
+    }
+  );
 
-    const products = response.data || [];
+  return response.data?.products || [];
+};
+
+const collectINProducts = async (keyword) => {
+  try {
     const expandedKeywords = expandKeyword(keyword);
+    const allResults = [];
 
-    const filteredProducts = products
-      .filter((item) => {
-        const searchableText = `${item.title} ${item.category} ${item.description}`.toLowerCase();
+    for (const term of expandedKeywords) {
+      const products = await searchDummyJson(term);
+      allResults.push(...products);
+    }
 
-        return expandedKeywords.some((term) => searchableText.includes(term));
-      })
-      .slice(0, 12)
-      .map((item, index) => ({
-        title: item.title,
-        priceText: `INR ${Math.round(item.price * 85)}`,
-        priceValue: Math.round(item.price * 85),
-        rating: item.rating?.rate || 0,
-        reviewCount: item.rating?.count || 0,
-        image: item.image || "",
-        productUrl: item.image || "",
-        sourceSite: ["Flipkart", "Amazon India", "Croma"][index % 3],
-      }));
+    const uniqueMap = new Map();
+    for (const item of allResults) {
+      if (!uniqueMap.has(item.id)) {
+        uniqueMap.set(item.id, item);
+      }
+    }
 
-    return filteredProducts;
+    const uniqueProducts = [...uniqueMap.values()].slice(0, 12);
+
+    return mapDummyProducts(uniqueProducts, 85, "INR", SOURCE_NAMES);
   } catch (error) {
     console.error("IN collector failed:", error.message);
     return [];

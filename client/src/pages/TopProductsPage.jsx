@@ -1,27 +1,31 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api, { getAuthConfig } from "../services/api";
-import { getSelectedJobId, saveSelectedJobId } from "../utils/selectedJob";
+import { saveSelectedJobId } from "../utils/selectedJob";
 
 function TopProductsPage() {
-  const [searchHistory, setSearchHistory] = useState([]);
-  const [selectedJobId, setSelectedJobId] = useState("");
-  const [topProducts, setTopProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const fetchTopProductsByJob = async (jobId) => {
-    try {
-      setLoading(true);
-      const { data } = await api.get(`/search/${jobId}/top-products`, getAuthConfig());
-      setTopProducts(data.topProducts || []);
-      setSelectedJobId(jobId);
-      saveSelectedJobId(jobId);
-    } catch (error) {
-      console.error("Failed to fetch top products:", error.message);
-      setTopProducts([]);
-    } finally {
-      setLoading(false);
-    }
+  const [searchHistory, setSearchHistory] = useState([]);
+
+  useEffect(() => {
+    const loadPage = async () => {
+      try {
+        const { data } = await api.get("/search/my-history", getAuthConfig());
+        const jobs = data.searchJobs || [];
+        setSearchHistory(jobs);
+      } catch (error) {
+        console.error("Failed to fetch search history:", error.message);
+      }
+    };
+
+    loadPage();
+  }, []);
+
+  const handleOpenTopProductsPage = (jobId) => {
+    saveSelectedJobId(jobId);
+    navigate(`/top-products/${jobId}`);
   };
 
   const handleDownloadReport = async (jobId) => {
@@ -55,83 +59,58 @@ function TopProductsPage() {
     }
   };
 
-  useEffect(() => {
-    const loadPage = async () => {
-      try {
-        const { data } = await api.get("/search/my-history", getAuthConfig());
-        const jobs = data.searchJobs || [];
-        setSearchHistory(jobs);
-
-        const savedJobId = getSelectedJobId();
-
-        if (savedJobId) {
-          await fetchTopProductsByJob(savedJobId);
-        }
-      } catch (error) {
-        console.error("Failed to fetch search history:", error.message);
-      }
-    };
-
-    loadPage();
-  }, []);
-
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-950">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold mb-4">Choose Search Job</h2>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+        <div className="rounded-[32px] bg-slate-900 border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)] p-6 md:p-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            Top Product Rankings
+          </h2>
+          <p className="text-slate-400 mb-6">
+            Choose a search job to open its own top-products page.
+          </p>
 
-          {searchHistory.map((job) => (
-            <div key={job._id} className="flex justify-between p-4 border rounded-xl">
-              <div>
-                <p className="font-semibold">{job.keyword}</p>
-                <p className="text-sm text-slate-500">{job.country} • {job.status}</p>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => fetchTopProductsByJob(job._id)}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-xl"
-                >
-                  View Top Products
-                </button>
-
-                <button
-                  onClick={() => handleDownloadReport(job._id)}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-xl"
-                >
-                  Download Report
-                </button>
-              </div>
+          {searchHistory.length === 0 ? (
+            <div className="rounded-[28px] border border-dashed border-white/10 bg-slate-950/40 p-8 text-center text-slate-400">
+              No search jobs found.
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="space-y-3">
+              {searchHistory.map((job) => (
+                <div
+                  key={job._id}
+                  className="rounded-[24px] border border-white/10 bg-slate-950/50 p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 transition"
+                >
+                  <div>
+                    <p className="font-semibold text-white capitalize">
+                      {job.keyword}
+                    </p>
+                    <p className="text-sm text-slate-400">
+                      {job.country} • {job.currency} • {job.status}
+                    </p>
+                  </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold mb-4">Top Products</h2>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleOpenTopProductsPage(job._id)}
+                      className="rounded-2xl bg-emerald-600 text-white px-4 py-2.5 hover:bg-emerald-700 transition font-semibold"
+                    >
+                      View Top Products
+                    </button>
 
-          {topProducts.map((product, index) => (
-            <div key={product._id} className="border p-5 rounded-xl mb-4">
-
-              {/* ✅ NEW BADGE */}
-              {index === 0 && (
-                <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs mb-2 inline-block">
-                  🥇 Best Product
+                    <button
+                      onClick={() => handleDownloadReport(job._id)}
+                      className="rounded-2xl bg-purple-600 text-white px-4 py-2.5 hover:bg-purple-700 transition font-semibold"
+                    >
+                      Download Report
+                    </button>
+                  </div>
                 </div>
-              )}
-
-              <h3 className="font-bold text-lg">{product.title}</h3>
-              <p>Price: {product.priceText}</p>
-              <p>Rating: {product.rating}</p>
-              <p>Score: {product.score}</p>
-
-              <a href={product.productUrl} target="_blank" rel="noreferrer">
-                View
-              </a>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

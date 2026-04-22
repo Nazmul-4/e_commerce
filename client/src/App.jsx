@@ -4,8 +4,9 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProductsPage from "./pages/ProductsPage";
 import TopProductsPage from "./pages/TopProductsPage";
+import SearchJobProductsPage from "./pages/SearchJobProductsPage";
+import SearchJobTopProductsPage from "./pages/SearchJobTopProductsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
-// import TopProductsPage from "./pages/TopProducts.Page";
 
 function App() {
   const token = localStorage.getItem("token");
@@ -25,7 +26,9 @@ function App() {
 
         <Route
           path="/register"
-          element={token ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
+          element={
+            token ? <Navigate to="/dashboard" replace /> : <RegisterPage />
+          }
         />
 
         <Route
@@ -47,10 +50,28 @@ function App() {
         />
 
         <Route
+          path="/products/:jobId"
+          element={
+            <ProtectedRoute>
+              <SearchJobProductsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/top-products"
           element={
             <ProtectedRoute>
               <TopProductsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/top-products/:jobId"
+          element={
+            <ProtectedRoute>
+              <SearchJobTopProductsPage />
             </ProtectedRoute>
           }
         />
