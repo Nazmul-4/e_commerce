@@ -11,6 +11,9 @@ function SearchJobTopProductsPage() {
   const [jobInfo, setJobInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fallbackImage =
+    "https://via.placeholder.com/400x300?text=Product+Image";
+
   const fetchJobAndTopProducts = async () => {
     try {
       saveSelectedJobId(jobId);
@@ -66,7 +69,9 @@ function SearchJobTopProductsPage() {
     fetchJobAndTopProducts();
   }, [jobId]);
 
-  const getRankStyles = (index) => {
+  const getRankStyles = (index, sourceSite = "") => {
+    const source = sourceSite.toLowerCase();
+
     if (index === 0) {
       return {
         badge: "from-yellow-400 via-amber-400 to-orange-500",
@@ -97,6 +102,26 @@ function SearchJobTopProductsPage() {
       };
     }
 
+    if (source.includes("star tech")) {
+      return {
+        badge: "from-cyan-400 via-blue-500 to-violet-600",
+        ring: "ring-cyan-400/20",
+        text: "text-cyan-300",
+        label: "Star Tech Ranked",
+        glow: "from-cyan-400/20 via-blue-400/10 to-transparent",
+      };
+    }
+
+    if (source.includes("ucc")) {
+      return {
+        badge: "from-violet-500 via-fuchsia-500 to-purple-600",
+        ring: "ring-violet-400/20",
+        text: "text-violet-300",
+        label: "UCC Ranked",
+        glow: "from-violet-400/20 via-fuchsia-400/10 to-transparent",
+      };
+    }
+
     return {
       badge: "from-emerald-400 via-cyan-400 to-blue-500",
       ring: "ring-cyan-400/20",
@@ -104,6 +129,20 @@ function SearchJobTopProductsPage() {
       label: "Top Ranked",
       glow: "from-cyan-400/20 via-blue-400/10 to-transparent",
     };
+  };
+
+  const getSourceBadgeClass = (sourceSite = "") => {
+    const source = sourceSite.toLowerCase();
+
+    if (source.includes("star tech")) {
+      return "bg-cyan-500/15 text-cyan-300 border border-cyan-400/20";
+    }
+
+    if (source.includes("ucc")) {
+      return "bg-violet-500/15 text-violet-300 border border-violet-400/20";
+    }
+
+    return "bg-white/10 text-slate-300 border border-white/10";
   };
 
   return (
@@ -164,7 +203,7 @@ function SearchJobTopProductsPage() {
                 Top Ranked Products
               </h2>
               <p className="text-slate-400 text-sm mt-2">
-                Premium ranking cards designed for a SaaS-style dashboard.
+                Cross-source ranking with detail-enriched premium cards.
               </p>
             </div>
 
@@ -186,7 +225,7 @@ function SearchJobTopProductsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
               {topProducts.map((product, index) => {
-                const styles = getRankStyles(index);
+                const styles = getRankStyles(index, product.sourceSite);
 
                 return (
                   <div
@@ -212,16 +251,17 @@ function SearchJobTopProductsPage() {
                         </div>
                       </div>
 
-                      {/* PRODUCT IMAGE POP-OUT ZONE */}
                       <div className="relative h-[220px] mb-4 flex items-center justify-center">
                         <div className="absolute inset-x-4 bottom-6 h-10 rounded-full bg-cyan-400/15 blur-2xl opacity-60 group-hover:opacity-90 transition duration-300" />
-
                         <div className="absolute inset-0 rounded-[24px] bg-white/95 shadow-inner" />
 
                         <div className="relative z-10 flex items-center justify-center w-full h-full">
                           <img
                             src={product.image}
                             alt={product.title}
+                            onError={(e) => {
+                              e.currentTarget.src = fallbackImage;
+                            }}
                             className="h-44 w-auto max-w-[85%] object-contain transition-all duration-500 ease-out group-hover:-translate-y-10 group-hover:scale-[1.18] group-hover:rotate-[-8deg] drop-shadow-[0_18px_35px_rgba(15,23,42,0.25)]"
                           />
                         </div>
@@ -236,12 +276,16 @@ function SearchJobTopProductsPage() {
                           {product.priceText}
                         </p>
 
-                        <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-semibold">
+                        <div
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${getSourceBadgeClass(
+                            product.sourceSite
+                          )}`}
+                        >
                           {product.sourceSite}
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 mb-5">
+                      <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
                           <p className="text-slate-400 text-xs mb-1">Rating</p>
                           <p className="text-white font-bold text-base">
@@ -256,6 +300,20 @@ function SearchJobTopProductsPage() {
                           </p>
                         </div>
 
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                          <p className="text-slate-400 text-xs mb-1">Brand</p>
+                          <p className="text-white font-bold text-sm">
+                            {product.brand || "N/A"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                          <p className="text-slate-400 text-xs mb-1">Stock</p>
+                          <p className="text-white font-bold text-sm line-clamp-1">
+                            {product.availability || "Unknown"}
+                          </p>
+                        </div>
+
                         <div className="rounded-2xl bg-white/5 border border-white/10 p-3 col-span-2">
                           <p className="text-slate-400 text-xs mb-1">Score</p>
                           <p className="text-cyan-300 font-extrabold text-lg">
@@ -263,6 +321,19 @@ function SearchJobTopProductsPage() {
                           </p>
                         </div>
                       </div>
+
+                      {product.shortSpecs?.length > 0 && (
+                        <div className="mb-5 rounded-2xl bg-white/5 border border-white/10 p-3">
+                          <p className="text-slate-400 text-xs mb-2">Quick Specs</p>
+                          <ul className="space-y-1 text-sm text-slate-200">
+                            {product.shortSpecs.slice(0, 3).map((spec, specIndex) => (
+                              <li key={specIndex} className="line-clamp-1">
+                                • {spec}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
                       {product.productUrl ? (
                         <a

@@ -21,7 +21,7 @@ const normalizeProduct = ({
 
   return {
     title: safeTitle,
-    priceText: `${config?.currency || "N/A"} ${safePriceValue}`,
+    priceText: priceText || `${config?.currency || "N/A"} ${safePriceValue}`,
     priceValue: safePriceValue,
     currency: config?.currency || "N/A",
     rating: safeRating,

@@ -7,66 +7,92 @@ const productSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
     priceText: {
-      type: String,
-      default: "",
-    },
-    priceValue: {
-      type: Number,
-      default: 0,
-    },
-    currency: {
       type: String,
       required: true,
     },
+
+    priceValue: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
+    currency: {
+      type: String,
+      required: true,
+      default: "BDT",
+    },
+
     rating: {
       type: Number,
       default: 0,
     },
+
     reviewCount: {
       type: Number,
       default: 0,
     },
+
     image: {
       type: String,
       default: "",
     },
+
     sourceSite: {
       type: String,
       required: true,
+      trim: true,
     },
+
     country: {
       type: String,
-      enum: ["BD", "IN", "CN"],
       required: true,
+      trim: true,
     },
-    productUrl: {
-      type: String,
-      required: true,
-    },
+
     keyword: {
       type: String,
       required: true,
+      trim: true,
     },
+
+    productUrl: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     score: {
       type: Number,
       default: 0,
     },
+
     searchJobId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SearchJob",
-      default: null,
+      required: true,
     },
-    collectedAt: {
-      type: Date,
-      default: Date.now,
+
+    brand: {
+      type: String,
+      default: "",
+    },
+
+    availability: {
+      type: String,
+      default: "",
+    },
+
+    shortSpecs: {
+      type: [String],
+      default: [],
     },
   },
   {
     timestamps: true,
   }
 );
-
-productSchema.index({ searchJobId: 1, productUrl: 1 }, { unique: true });
 
 module.exports = mongoose.model("Product", productSchema);

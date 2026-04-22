@@ -1,9 +1,27 @@
-const simplifyText = (text = "") =>
+const normalizeText = (text = "") =>
   text
     .toLowerCase()
-    .replace(/[^\w\s]/g, "")
+    .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+const removeNoiseWords = (title = "") => {
+  const noiseWords = [
+    "intel",
+    "amd",
+    "nvidia",
+    "official",
+    "original",
+    "brand",
+    "new",
+    "gaming",
+    "laptop",
+    "desktop",
+  ];
+
+  const words = normalizeText(title).split(" ");
+  return words.filter((word) => !noiseWords.includes(word)).join(" ");
+};
 
 const filterProducts = (products = []) => {
   const seen = new Set();
@@ -15,6 +33,7 @@ const filterProducts = (products = []) => {
 
     if (!title) return false;
     if (!productUrl) return false;
+    if (priceValue <= 0) return false;
 
     if (
       productUrl.startsWith("javascript:") ||
@@ -23,13 +42,9 @@ const filterProducts = (products = []) => {
       return false;
     }
 
-    if (priceValue <= 0) return false;
-
-    const simplifiedTitle = simplifyText(title);
-    const simplifiedUrl = productUrl.toLowerCase().trim();
-
-    // smarter duplicate key
-    const uniqueKey = `${simplifiedTitle}__${simplifiedUrl}`;
+    const simplifiedTitle = removeNoiseWords(title);
+    const roundedPriceBucket = Math.round(priceValue / 1000);
+    const uniqueKey = `${simplifiedTitle}__${roundedPriceBucket}`;
 
     if (seen.has(uniqueKey)) {
       return false;

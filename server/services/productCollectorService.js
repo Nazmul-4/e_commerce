@@ -3,11 +3,7 @@ const collectINProducts = require("./collectors/inCollector");
 const collectCNProducts = require("./collectors/cnCollector");
 const normalizeProduct = require("../utils/normalizeProduct");
 
-const collectProductsByCountry = async ({
-  keyword,
-  country,
-  searchJobId,
-}) => {
+const collectProductsByCountry = async ({ keyword, country, searchJobId }) => {
   let rawProducts = [];
 
   if (country === "BD") {

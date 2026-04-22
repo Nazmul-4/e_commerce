@@ -2,10 +2,9 @@ const { Parser } = require("json2csv");
 const SearchJob = require("../models/SearchJob");
 const Product = require("../models/Product");
 const countryConfig = require("../config/countryConfig");
-const collectProductsByCountry = require("../services/productCollectorService");
 const calculateScore = require("../utils/calculateScore");
+const collectProductsByCountry = require("../services/productCollectorService");
 const filterProducts = require("../utils/filterProducts");
-
 
 // Create a new search job
 const createSearchJob = async (req, res) => {
@@ -73,7 +72,7 @@ const getMySearchJobs = async (req, res) => {
   }
 };
 
-// Generate mock products for a search job
+// Generate real products for a search job
 const generateSearchProducts = async (req, res) => {
   try {
     const { jobId } = req.params;
@@ -93,6 +92,7 @@ const generateSearchProducts = async (req, res) => {
     searchJob.status = "running";
     await searchJob.save();
 
+    // remove old products for this job before generating new ones
     await Product.deleteMany({ searchJobId: searchJob._id });
 
     const collectedProducts = await collectProductsByCountry({
@@ -230,7 +230,6 @@ const downloadTopProductsReport = async (req, res) => {
       });
     }
 
-    // Convert to report format
     const reportRows = topProducts.map((product, index) => ({
       rank: index + 1,
       title: product.title,
@@ -245,7 +244,6 @@ const downloadTopProductsReport = async (req, res) => {
       productUrl: product.productUrl,
     }));
 
-    // CSV columns order
     const fields = [
       "rank",
       "title",
@@ -260,20 +258,16 @@ const downloadTopProductsReport = async (req, res) => {
       "productUrl",
     ];
 
-    // Convert JavaScript object to CSV text
     const parser = new Parser({ fields });
     const csv = parser.parse(reportRows);
 
     const safeKeyword = searchJob.keyword.replace(/\s+/g, "_").toLowerCase();
     const fileName = `${safeKeyword}_${searchJob.country}_top_products.csv`;
 
-    // UTF-8 BOM fix for Excel
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
+    res.header("Content-Type", "text/csv");
+    res.attachment(fileName);
 
-    const csvWithBom = "\uFEFF" + csv;
-
-    return res.send(csvWithBom);
+    return res.send("\uFEFF" + csv);
   } catch (error) {
     return res.status(500).json({
       success: false,
