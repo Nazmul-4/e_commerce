@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
 import api, { getAuthConfig } from "../services/api";
 
 function DashboardPage() {
-  const navigate = useNavigate();
-
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -12,17 +10,7 @@ function DashboardPage() {
   const [searchMessage, setSearchMessage] = useState("");
   const [searchError, setSearchError] = useState("");
   const [searchHistory, setSearchHistory] = useState([]);
-  const [selectedJobId, setSelectedJobId] = useState("");
-  const [products, setProducts] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
-  const [productLoading, setProductLoading] = useState(false);
-  const [topLoading, setTopLoading] = useState(false);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login");
-  };
+  const [generateLoadingId, setGenerateLoadingId] = useState("");
 
   const fetchCurrentUser = async () => {
     try {
@@ -30,9 +18,6 @@ function DashboardPage() {
       setUser(data.user);
     } catch (error) {
       console.error("Failed to fetch current user:", error.message);
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      navigate("/login");
     }
   };
 
@@ -42,35 +27,6 @@ function DashboardPage() {
       setSearchHistory(data.searchJobs || []);
     } catch (error) {
       console.error("Failed to fetch search history:", error.message);
-    }
-  };
-
-  const fetchProductsByJob = async (jobId) => {
-    try {
-      setProductLoading(true);
-      const { data } = await api.get(`/search/${jobId}/products`, getAuthConfig());
-      setProducts(data.products || []);
-    } catch (error) {
-      console.error("Failed to fetch products:", error.message);
-      setProducts([]);
-    } finally {
-      setProductLoading(false);
-    }
-  };
-
-  const fetchTopProductsByJob = async (jobId) => {
-    try {
-      setTopLoading(true);
-      const { data } = await api.get(
-        `/search/${jobId}/top-products`,
-        getAuthConfig()
-      );
-      setTopProducts(data.topProducts || []);
-    } catch (error) {
-      console.error("Failed to fetch top products:", error.message);
-      setTopProducts([]);
-    } finally {
-      setTopLoading(false);
     }
   };
 
@@ -96,7 +52,7 @@ function DashboardPage() {
     } catch (error) {
       setSearchError(
         error.response?.data?.message ||
-        "Failed to create search job. Please try again."
+          "Failed to create search job. Please try again."
       );
     } finally {
       setSearchLoading(false);
@@ -105,74 +61,26 @@ function DashboardPage() {
 
   const handleGenerateProducts = async (jobId) => {
     try {
-      setProductLoading(true);
-      setTopProducts([]);
+      setGenerateLoadingId(jobId);
 
       await api.post(`/search/${jobId}/generate-products`, {}, getAuthConfig());
 
-      setSelectedJobId(jobId);
       await fetchSearchHistory();
-      await fetchProductsByJob(jobId);
-      await fetchTopProductsByJob(jobId);
     } catch (error) {
       console.error("Failed to generate products:", error.message);
     } finally {
-      setProductLoading(false);
+      setGenerateLoadingId("");
     }
   };
-
-  const handleViewProducts = async (jobId) => {
-    setSelectedJobId(jobId);
-    await fetchProductsByJob(jobId);
-  };
-
-  const handleViewTopProducts = async (jobId) => {
-    setSelectedJobId(jobId);
-    await fetchTopProductsByJob(jobId);
-  };
-
-
-  const handleDownloadReport = async (jobId) => {
-    try {
-      const response = await api.get(`/search/${jobId}/download-report`, {
-        ...getAuthConfig(),
-        responseType: "blob",
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-
-      const contentDisposition = response.headers["content-disposition"];
-      let fileName = "top_products_report.csv";
-
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="?(.+?)"?$/);
-        if (match && match[1]) {
-          fileName = match[1];
-        }
-      }
-
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Failed to download report:", error.message);
-    }
-  };
-
-
 
   useEffect(() => {
-    const loadDashboard = async () => {
+    const loadData = async () => {
       await fetchCurrentUser();
       await fetchSearchHistory();
       setLoading(false);
     };
 
-    loadDashboard();
+    loadData();
   }, []);
 
   if (loading) {
@@ -184,24 +92,15 @@ function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="bg-white shadow-lg rounded-2xl p-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800">Dashboard</h1>
-              <p className="text-slate-600 mt-2">
-                Welcome to your country-based product dashboard
-              </p>
-            </div>
+    <div className="min-h-screen bg-slate-100">
+      <Navbar />
 
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 text-white px-5 py-2.5 rounded-xl hover:bg-red-600 transition"
-            >
-              Logout
-            </button>
-          </div>
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <div className="bg-white shadow-lg rounded-2xl p-8">
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Dashboard</h1>
+          <p className="text-slate-600 mb-8">
+            Create search jobs and generate real product data.
+          </p>
 
           {user && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -222,50 +121,40 @@ function DashboardPage() {
             </div>
           )}
 
-          <div className="border-t pt-8">
-            <h2 className="text-2xl font-bold text-slate-800 mb-4">
-              Search Products
-            </h2>
+          <form onSubmit={handleCreateSearch} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Product Keyword
+              </label>
+              <input
+                type="text"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="Example: shirt, bag, jacket"
+                className="w-full border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-slate-400"
+              />
+            </div>
 
-            <form onSubmit={handleCreateSearch} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Product Keyword
-                </label>
-                <input
-                  type="text"
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="Example: smart watch"
-                  className="w-full border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-slate-400"
-                />
-              </div>
+            {searchError && (
+              <p className="text-red-600 text-sm font-medium">{searchError}</p>
+            )}
 
-              {searchError && (
-                <p className="text-red-600 text-sm font-medium">{searchError}</p>
-              )}
+            {searchMessage && (
+              <p className="text-green-600 text-sm font-medium">{searchMessage}</p>
+            )}
 
-              {searchMessage && (
-                <p className="text-green-600 text-sm font-medium">
-                  {searchMessage}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={searchLoading}
-                className="bg-slate-800 text-white px-6 py-3 rounded-xl hover:bg-slate-900 transition disabled:opacity-50"
-              >
-                {searchLoading ? "Creating Search..." : "Create Search Job"}
-              </button>
-            </form>
-          </div>
+            <button
+              type="submit"
+              disabled={searchLoading}
+              className="bg-slate-800 text-white px-6 py-3 rounded-xl hover:bg-slate-900 transition disabled:opacity-50"
+            >
+              {searchLoading ? "Creating Search..." : "Create Search Job"}
+            </button>
+          </form>
         </div>
 
         <div className="bg-white shadow-lg rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">
-            Search History
-          </h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">Search History</h2>
 
           {searchHistory.length === 0 ? (
             <p className="text-slate-600">No search history found yet.</p>
@@ -276,7 +165,7 @@ function DashboardPage() {
                   key={job._id}
                   className="border border-slate-200 rounded-xl p-4 bg-slate-50"
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
+                  <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
                     <div>
                       <p className="text-xs text-slate-500">Keyword</p>
                       <p className="font-semibold text-slate-800">{job.keyword}</p>
@@ -299,194 +188,21 @@ function DashboardPage() {
 
                     <div>
                       <p className="text-xs text-slate-500">Products Saved</p>
-                      <p className="font-semibold text-slate-800">
-                        {job.totalProductsSaved}
-                      </p>
+                      <p className="font-semibold text-slate-800">{job.totalProductsSaved}</p>
                     </div>
 
-                    <div className="flex flex-col gap-2">
+                    <div>
                       <button
                         onClick={() => handleGenerateProducts(job._id)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition"
+                        disabled={generateLoadingId === job._id}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition disabled:opacity-50"
                       >
-                        Generate Products
-                      </button>
-
-                      <button
-                        onClick={() => handleViewProducts(job._id)}
-                        className="bg-slate-700 text-white px-4 py-2 rounded-xl hover:bg-slate-800 transition"
-                      >
-                        View Products
-                      </button>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <button
-                        onClick={() => handleViewTopProducts(job._id)}
-                        className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
-                      >
-                        View Top Products
-                      </button>
-
-                      <button
-                        onClick={() => handleDownloadReport(job._id)}
-                        className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition"
-                      >
-                        Download Report
+                        {generateLoadingId === job._id
+                          ? "Generating..."
+                          : "Generate Products"}
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white shadow-lg rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">
-            Product List
-          </h2>
-
-          {!selectedJobId ? (
-            <p className="text-slate-600">
-              Select a search job and generate/view products.
-            </p>
-          ) : productLoading ? (
-            <p className="text-slate-600">Loading products...</p>
-          ) : products.length === 0 ? (
-            <p className="text-slate-600">No products found for this search job.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {products.map((product) => (
-                <div
-                  key={product._id}
-                  className="border border-slate-200 rounded-2xl p-5 bg-slate-50"
-                >
-                  <img
-                    src={product.image}
-                    alt={product.title}
-                    className="w-full h-40 object-cover rounded-xl mb-4"
-                  />
-
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">
-                    {product.title}
-                  </h3>
-
-                  <p className="text-slate-700 mb-1">
-                    <span className="font-semibold">Price:</span> {product.priceText}
-                  </p>
-
-                  <p className="text-slate-700 mb-1">
-                    <span className="font-semibold">Currency:</span> {product.currency}
-                  </p>
-
-                  <p className="text-slate-700 mb-1">
-                    <span className="font-semibold">Rating:</span> {product.rating}
-                  </p>
-
-                  <p className="text-slate-700 mb-1">
-                    <span className="font-semibold">Reviews:</span> {product.reviewCount}
-                  </p>
-
-                  <p className="text-slate-700 mb-1">
-                    <span className="font-semibold">Score:</span> {product.score}
-                  </p>
-
-                  <p className="text-slate-700 mb-3">
-                    <span className="font-semibold">Source:</span> {product.sourceSite}
-                  </p>
-
-                  {product.productUrl && !product.productUrl.includes("example.com") ? (
-                    <a
-                      href={product.productUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-block bg-slate-800 text-white px-4 py-2 rounded-xl hover:bg-slate-900 transition"
-                    >
-                      View Product
-                    </a>
-                  ) : (
-                    <button
-                      disabled
-                      className="inline-block bg-slate-400 text-white px-4 py-2 rounded-xl cursor-not-allowed"
-                    >
-                      Demo Product
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white shadow-lg rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">
-            Top Ranked Products
-          </h2>
-
-          {!selectedJobId ? (
-            <p className="text-slate-600">
-              Select a search job and view top products.
-            </p>
-          ) : topLoading ? (
-            <p className="text-slate-600">Loading top products...</p>
-          ) : topProducts.length === 0 ? (
-            <p className="text-slate-600">No top products found yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {topProducts.map((product, index) => (
-                <div
-                  key={product._id}
-                  className="border border-slate-200 rounded-2xl p-5 bg-slate-50 flex flex-col md:flex-row gap-4 md:items-center"
-                >
-                  <div className="text-2xl font-bold text-emerald-600 min-w-[60px]">
-                    #{index + 1}
-                  </div>
-
-                  <img
-                    src={product.image}
-                    alt={product.title}
-                    className="w-full md:w-32 h-28 object-cover rounded-xl"
-                  />
-
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-slate-800 mb-1">
-                      {product.title}
-                    </h3>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Price:</span> {product.priceText}
-                    </p>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Rating:</span> {product.rating}
-                    </p>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Reviews:</span> {product.reviewCount}
-                    </p>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Score:</span> {product.score}
-                    </p>
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Source:</span> {product.sourceSite}
-                    </p>
-                  </div>
-
-                  {product.productUrl && !product.productUrl.includes("example.com") ? (
-                    <a
-                      href={product.productUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-block bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
-                    >
-                      Open
-                    </a>
-                  ) : (
-                    <button
-                      disabled
-                      className="inline-block bg-slate-400 text-white px-4 py-2 rounded-xl cursor-not-allowed"
-                    >
-                      Demo Link
-                    </button>
-                  )}
                 </div>
               ))}
             </div>

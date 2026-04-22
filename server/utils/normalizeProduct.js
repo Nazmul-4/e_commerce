@@ -14,19 +14,24 @@ const normalizeProduct = ({
   searchJobId,
 }) => {
   const config = countryConfig[country];
+  const safeTitle = title?.trim() || "Unknown Product";
   const safePriceValue = Number(priceValue) || 0;
+  const safeRating = Number(rating) || 0;
+  const safeReviewCount = Number(reviewCount) || 0;
 
   return {
-    title: title?.trim() || "Unknown Product",
+    title: safeTitle,
     priceText: `${config?.currency || "N/A"} ${safePriceValue}`,
     priceValue: safePriceValue,
     currency: config?.currency || "N/A",
-    rating: Number(rating) || 0,
-    reviewCount: Number(reviewCount) || 0,
+    rating: safeRating,
+    reviewCount: safeReviewCount,
     image:
       image && image.trim()
         ? image
-        : "https://picsum.photos/seed/default-product/300/200",
+        : `https://picsum.photos/seed/${encodeURIComponent(
+            safeTitle
+          )}/300/200`,
     sourceSite: sourceSite || "Unknown Source",
     country,
     productUrl: productUrl || "",

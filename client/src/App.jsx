@@ -2,7 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import ProductsPage from "./pages/ProductsPage";
+import TopProductsPage from "./pages/TopProductsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+// import TopProductsPage from "./pages/TopProducts.Page";
 
 function App() {
   const token = localStorage.getItem("token");
@@ -30,6 +33,24 @@ function App() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <ProductsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/top-products"
+          element={
+            <ProtectedRoute>
+              <TopProductsPage />
             </ProtectedRoute>
           }
         />

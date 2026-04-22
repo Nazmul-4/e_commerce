@@ -1,18 +1,21 @@
+const simplifyText = (text = "") =>
+  text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const filterProducts = (products = []) => {
   const seen = new Set();
 
-  const filtered = products.filter((product) => {
+  return products.filter((product) => {
     const title = product.title?.trim();
     const productUrl = product.productUrl?.trim();
     const priceValue = Number(product.priceValue) || 0;
 
-    // Must have title
     if (!title) return false;
-
-    // Must have product URL
     if (!productUrl) return false;
 
-    // Skip broken/demo-empty javascript links
     if (
       productUrl.startsWith("javascript:") ||
       productUrl.startsWith("#")
@@ -20,11 +23,13 @@ const filterProducts = (products = []) => {
       return false;
     }
 
-    // price must be greater than 0
     if (priceValue <= 0) return false;
 
-    // duplicate check by lowercased title + url
-    const uniqueKey = `${title.toLowerCase()}__${productUrl.toLowerCase()}`;
+    const simplifiedTitle = simplifyText(title);
+    const simplifiedUrl = productUrl.toLowerCase().trim();
+
+    // smarter duplicate key
+    const uniqueKey = `${simplifiedTitle}__${simplifiedUrl}`;
 
     if (seen.has(uniqueKey)) {
       return false;
@@ -33,8 +38,6 @@ const filterProducts = (products = []) => {
     seen.add(uniqueKey);
     return true;
   });
-
-  return filtered;
 };
 
 module.exports = filterProducts;

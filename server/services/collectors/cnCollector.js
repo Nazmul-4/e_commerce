@@ -1,34 +1,50 @@
+const axios = require("axios");
+
 const collectCNProducts = async (keyword) => {
-  return [
-    {
-      title: `${keyword} CN One`,
-      priceText: "CNY 299",
-      priceValue: 299,
-      rating: 4.1,
-      reviewCount: 520,
-      image: `https://via.placeholder.com/300x200?text=${encodeURIComponent(
-        keyword
-      )}+CN+1`,
-      productUrl: `https://example.com/cn/${encodeURIComponent(
-        keyword.toLowerCase().replace(/\s+/g, "-")
-      )}/1`,
-      sourceSite: "Alibaba",
-    },
-    {
-      title: `${keyword} CN Two`,
-      priceText: "CNY 399",
-      priceValue: 399,
-      rating: 4.6,
-      reviewCount: 450,
-      image: `https://via.placeholder.com/300x200?text=${encodeURIComponent(
-        keyword
-      )}+CN+2`,
-      productUrl: `https://example.com/cn/${encodeURIComponent(
-        keyword.toLowerCase().replace(/\s+/g, "-")
-      )}/2`,
-      sourceSite: "AliExpress",
-    },
-  ];
+  try {
+    const response = await axios.get("https://fakestoreapi.com/products", {
+      timeout: 8000,
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+      },
+    });
+
+    const products = response.data || [];
+
+    const filteredProducts = products
+      .filter((item) =>
+        item.title.toLowerCase().includes(keyword.toLowerCase())
+      )
+      .slice(0, 12)
+      .map((item, index) => ({
+        title: item.title,
+        priceText: `CNY ${Math.round(item.price * 7)}`,
+        priceValue: Math.round(item.price * 7),
+        rating: item.rating?.rate || 0,
+        reviewCount: item.rating?.count || 0,
+        image: item.image || "",
+        productUrl: item.image || "",
+        sourceSite: ["Alibaba", "AliExpress", "JD"][index % 3],
+      }));
+
+    if (filteredProducts.length > 0) {
+      return filteredProducts;
+    }
+
+    return products.slice(0, 12).map((item, index) => ({
+      title: item.title,
+      priceText: `CNY ${Math.round(item.price * 7)}`,
+      priceValue: Math.round(item.price * 7),
+      rating: item.rating?.rate || 0,
+      reviewCount: item.rating?.count || 0,
+      image: item.image || "",
+      productUrl: item.image || "",
+      sourceSite: ["Alibaba", "AliExpress", "JD"][index % 3],
+    }));
+  } catch (error) {
+    console.error("CN collector failed:", error.message);
+    return [];
+  }
 };
 
 module.exports = collectCNProducts;
