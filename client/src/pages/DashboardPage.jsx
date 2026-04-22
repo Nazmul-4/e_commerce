@@ -96,7 +96,7 @@ function DashboardPage() {
     } catch (error) {
       setSearchError(
         error.response?.data?.message ||
-          "Failed to create search job. Please try again."
+        "Failed to create search job. Please try again."
       );
     } finally {
       setSearchLoading(false);
@@ -130,6 +130,40 @@ function DashboardPage() {
     setSelectedJobId(jobId);
     await fetchTopProductsByJob(jobId);
   };
+
+
+  const handleDownloadReport = async (jobId) => {
+    try {
+      const response = await api.get(`/search/${jobId}/download-report`, {
+        ...getAuthConfig(),
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+
+      const contentDisposition = response.headers["content-disposition"];
+      let fileName = "top_products_report.csv";
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (match && match[1]) {
+          fileName = match[1];
+        }
+      }
+
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download report:", error.message);
+    }
+  };
+
+
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -292,6 +326,13 @@ function DashboardPage() {
                         className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
                       >
                         View Top Products
+                      </button>
+
+                      <button
+                        onClick={() => handleDownloadReport(job._id)}
+                        className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition"
+                      >
+                        Download Report
                       </button>
                     </div>
                   </div>

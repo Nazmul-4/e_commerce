@@ -1,3 +1,4 @@
+const { Parser } = require("json2csv");
 const SearchJob = require("../models/SearchJob");
 const Product = require("../models/Product");
 const countryConfig = require("../config/countryConfig");
@@ -197,10 +198,89 @@ const getTopProductsBySearchJob = async (req, res) => {
   }
 };
 
+// Download CSV report for top products
+const downloadTopProductsReport = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const searchJob = await SearchJob.findOne({
+      _id: jobId,
+      userId: req.user._id,
+    });
+
+    if (!searchJob) {
+      return res.status(404).json({
+        success: false,
+        message: "Search job not found",
+      });
+    }
+
+    const topProducts = await Product.find({ searchJobId: jobId })
+      .sort({ score: -1 })
+      .limit(10);
+
+    if (topProducts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No top products found for this search job",
+      });
+    }
+//convert to report format
+    const reportRows = topProducts.map((product, index) => ({
+      rank: index + 1,
+      title: product.title,
+      priceText: product.priceText,
+      priceValue: product.priceValue,
+      currency: product.currency,
+      rating: product.rating,
+      reviewCount: product.reviewCount,
+      score: product.score,
+      sourceSite: product.sourceSite,
+      country: product.country,
+      keyword: product.keyword,
+      productUrl: product.productUrl,
+    }));
+
+//csv columns order    
+    const fields = [
+      "rank",
+      "title",
+      "priceText",
+      "priceValue",
+      "currency",
+      "rating",
+      "reviewCount",
+      "score",
+      "sourceSite",
+      "country",
+      "keyword",
+      "productUrl",
+    ];
+//convert javascript object to csv text
+    const parser = new Parser({ fields });
+    const csv = parser.parse(reportRows);
+
+    const safeKeyword = searchJob.keyword.replace(/\s+/g, "_").toLowerCase();
+    const fileName = `${safeKeyword}_${searchJob.country}_top_products.csv`;
+
+    res.header("Content-Type", "text/csv");
+    res.attachment(fileName);
+
+    return res.send(csv);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to download report",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createSearchJob,
   getMySearchJobs,
   generateSearchProducts,
   getProductsBySearchJob,
   getTopProductsBySearchJob,
+  downloadTopProductsReport,
 };
