@@ -2,7 +2,7 @@ const { Parser } = require("json2csv");
 const SearchJob = require("../models/SearchJob");
 const Product = require("../models/Product");
 const countryConfig = require("../config/countryConfig");
-const generateMockProducts = require("../utils/mockProducts");
+const collectProductsByCountry = require("../services/productCollectorService");
 const calculateScore = require("../utils/calculateScore");
 
 // Create a new search job
@@ -93,13 +93,13 @@ const generateSearchProducts = async (req, res) => {
 
     await Product.deleteMany({ searchJobId: searchJob._id });
 
-    const mockProducts = generateMockProducts({
+    const collectedProducts = await collectProductsByCountry({
       keyword: searchJob.keyword,
       country: searchJob.country,
       searchJobId: searchJob._id,
     });
 
-    const productsWithScore = mockProducts.map((product) => ({
+    const productsWithScore = collectedProducts.map((product) => ({
       ...product,
       score: calculateScore(product),
     }));
@@ -113,14 +113,14 @@ const generateSearchProducts = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Mock products generated successfully",
+      message: "Products collected successfully",
       totalProducts: savedProducts.length,
       products: savedProducts,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Failed to generate products",
+      message: "Failed to collect products",
       error: error.message,
     });
   }
