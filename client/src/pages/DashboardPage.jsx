@@ -14,7 +14,9 @@ function DashboardPage() {
   const [searchHistory, setSearchHistory] = useState([]);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [products, setProducts] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
   const [productLoading, setProductLoading] = useState(false);
+  const [topLoading, setTopLoading] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -56,6 +58,22 @@ function DashboardPage() {
     }
   };
 
+  const fetchTopProductsByJob = async (jobId) => {
+    try {
+      setTopLoading(true);
+      const { data } = await api.get(
+        `/search/${jobId}/top-products`,
+        getAuthConfig()
+      );
+      setTopProducts(data.topProducts || []);
+    } catch (error) {
+      console.error("Failed to fetch top products:", error.message);
+      setTopProducts([]);
+    } finally {
+      setTopLoading(false);
+    }
+  };
+
   const handleCreateSearch = async (e) => {
     e.preventDefault();
 
@@ -70,11 +88,7 @@ function DashboardPage() {
     try {
       setSearchLoading(true);
 
-      const { data } = await api.post(
-        "/search",
-        { keyword },
-        getAuthConfig()
-      );
+      const { data } = await api.post("/search", { keyword }, getAuthConfig());
 
       setSearchMessage(data.message || "Search job created successfully");
       setKeyword("");
@@ -92,12 +106,14 @@ function DashboardPage() {
   const handleGenerateProducts = async (jobId) => {
     try {
       setProductLoading(true);
+      setTopProducts([]);
 
       await api.post(`/search/${jobId}/generate-products`, {}, getAuthConfig());
 
       setSelectedJobId(jobId);
       await fetchSearchHistory();
       await fetchProductsByJob(jobId);
+      await fetchTopProductsByJob(jobId);
     } catch (error) {
       console.error("Failed to generate products:", error.message);
     } finally {
@@ -108,6 +124,11 @@ function DashboardPage() {
   const handleViewProducts = async (jobId) => {
     setSelectedJobId(jobId);
     await fetchProductsByJob(jobId);
+  };
+
+  const handleViewTopProducts = async (jobId) => {
+    setSelectedJobId(jobId);
+    await fetchTopProductsByJob(jobId);
   };
 
   useEffect(() => {
@@ -221,7 +242,7 @@ function DashboardPage() {
                   key={job._id}
                   className="border border-slate-200 rounded-xl p-4 bg-slate-50"
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                  <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
                     <div>
                       <p className="text-xs text-slate-500">Keyword</p>
                       <p className="font-semibold text-slate-800">{job.keyword}</p>
@@ -262,6 +283,15 @@ function DashboardPage() {
                         className="bg-slate-700 text-white px-4 py-2 rounded-xl hover:bg-slate-800 transition"
                       >
                         View Products
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => handleViewTopProducts(job._id)}
+                        className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
+                      >
+                        View Top Products
                       </button>
                     </div>
                   </div>
@@ -317,6 +347,10 @@ function DashboardPage() {
                     <span className="font-semibold">Reviews:</span> {product.reviewCount}
                   </p>
 
+                  <p className="text-slate-700 mb-1">
+                    <span className="font-semibold">Score:</span> {product.score}
+                  </p>
+
                   <p className="text-slate-700 mb-3">
                     <span className="font-semibold">Source:</span> {product.sourceSite}
                   </p>
@@ -328,6 +362,71 @@ function DashboardPage() {
                     className="inline-block bg-slate-800 text-white px-4 py-2 rounded-xl hover:bg-slate-900 transition"
                   >
                     View Product
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white shadow-lg rounded-2xl p-8">
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">
+            Top Ranked Products
+          </h2>
+
+          {!selectedJobId ? (
+            <p className="text-slate-600">
+              Select a search job and view top products.
+            </p>
+          ) : topLoading ? (
+            <p className="text-slate-600">Loading top products...</p>
+          ) : topProducts.length === 0 ? (
+            <p className="text-slate-600">No top products found yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {topProducts.map((product, index) => (
+                <div
+                  key={product._id}
+                  className="border border-slate-200 rounded-2xl p-5 bg-slate-50 flex flex-col md:flex-row gap-4 md:items-center"
+                >
+                  <div className="text-2xl font-bold text-emerald-600 min-w-[60px]">
+                    #{index + 1}
+                  </div>
+
+                  <img
+                    src={product.image}
+                    alt={product.title}
+                    className="w-full md:w-32 h-28 object-cover rounded-xl"
+                  />
+
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">
+                      {product.title}
+                    </h3>
+                    <p className="text-slate-700">
+                      <span className="font-semibold">Price:</span> {product.priceText}
+                    </p>
+                    <p className="text-slate-700">
+                      <span className="font-semibold">Rating:</span> {product.rating}
+                    </p>
+                    <p className="text-slate-700">
+                      <span className="font-semibold">Reviews:</span> {product.reviewCount}
+                    </p>
+                    <p className="text-slate-700">
+                      <span className="font-semibold">Score:</span> {product.score}
+                    </p>
+                    <p className="text-slate-700">
+                      <span className="font-semibold">Source:</span> {product.sourceSite}
+                    </p>
+                  </div>
+
+                  <a
+                    href={product.productUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
+                  >
+                    Open
                   </a>
                 </div>
               ))}

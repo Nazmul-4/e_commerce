@@ -43,7 +43,6 @@ const productSchema = new mongoose.Schema(
     productUrl: {
       type: String,
       required: true,
-      unique: true,
     },
     keyword: {
       type: String,
@@ -67,5 +66,7 @@ const productSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+productSchema.index({ searchJobId: 1, productUrl: 1 }, { unique: true });
 
 module.exports = mongoose.model("Product", productSchema);

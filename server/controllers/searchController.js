@@ -2,6 +2,7 @@ const SearchJob = require("../models/SearchJob");
 const Product = require("../models/Product");
 const countryConfig = require("../config/countryConfig");
 const generateMockProducts = require("../utils/mockProducts");
+const calculateScore = require("../utils/calculateScore");
 
 // Create a new search job
 const createSearchJob = async (req, res) => {
@@ -86,23 +87,24 @@ const generateSearchProducts = async (req, res) => {
       });
     }
 
-    // Mark running
     searchJob.status = "running";
     await searchJob.save();
 
-    // Delete old products for this search job if they exist
     await Product.deleteMany({ searchJobId: searchJob._id });
 
-    // Generate demo product list
     const mockProducts = generateMockProducts({
       keyword: searchJob.keyword,
       country: searchJob.country,
       searchJobId: searchJob._id,
     });
 
-    const savedProducts = await Product.insertMany(mockProducts);
+    const productsWithScore = mockProducts.map((product) => ({
+      ...product,
+      score: calculateScore(product),
+    }));
 
-    // Update search job counts
+    const savedProducts = await Product.insertMany(productsWithScore);
+
     searchJob.totalUrlsFound = savedProducts.length;
     searchJob.totalProductsSaved = savedProducts.length;
     searchJob.status = "completed";
@@ -159,9 +161,46 @@ const getProductsBySearchJob = async (req, res) => {
   }
 };
 
+// Get top ranked products by search job
+const getTopProductsBySearchJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const searchJob = await SearchJob.findOne({
+      _id: jobId,
+      userId: req.user._id,
+    });
+
+    if (!searchJob) {
+      return res.status(404).json({
+        success: false,
+        message: "Search job not found",
+      });
+    }
+
+    const topProducts = await Product.find({ searchJobId: jobId })
+      .sort({ score: -1 })
+      .limit(10);
+
+    return res.status(200).json({
+      success: true,
+      message: "Top products fetched successfully",
+      total: topProducts.length,
+      topProducts,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch top products",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createSearchJob,
   getMySearchJobs,
   generateSearchProducts,
   getProductsBySearchJob,
+  getTopProductsBySearchJob,
 };
