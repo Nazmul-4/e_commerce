@@ -73,6 +73,7 @@ function SearchJobTopProductsPage() {
         ring: "ring-yellow-400/40",
         text: "text-yellow-300",
         label: "🥇 Best Overall",
+        glow: "from-yellow-400/25 via-orange-400/10 to-transparent",
       };
     }
 
@@ -82,6 +83,7 @@ function SearchJobTopProductsPage() {
         ring: "ring-slate-300/30",
         text: "text-slate-200",
         label: "🥈 Runner Up",
+        glow: "from-slate-300/20 via-slate-300/10 to-transparent",
       };
     }
 
@@ -91,6 +93,7 @@ function SearchJobTopProductsPage() {
         ring: "ring-orange-400/30",
         text: "text-amber-300",
         label: "🥉 Top Pick",
+        glow: "from-orange-400/20 via-amber-400/10 to-transparent",
       };
     }
 
@@ -99,6 +102,7 @@ function SearchJobTopProductsPage() {
       ring: "ring-cyan-400/20",
       text: "text-cyan-300",
       label: "Top Ranked",
+      glow: "from-cyan-400/20 via-blue-400/10 to-transparent",
     };
   };
 
@@ -180,15 +184,16 @@ function SearchJobTopProductsPage() {
               No top products found for this search job.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
               {topProducts.map((product, index) => {
                 const styles = getRankStyles(index);
 
                 return (
                   <div
                     key={product._id}
-                    className={`group relative overflow-hidden rounded-[30px] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(0,0,0,0.45)] transition-all duration-300 ring-1 ${styles.ring}`}
+                    className={`group relative overflow-visible rounded-[30px] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 px-5 pt-5 pb-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(0,0,0,0.45)] transition-all duration-300 ring-1 ${styles.ring}`}
                   >
+                    <div className={`absolute inset-0 rounded-[30px] bg-gradient-to-br ${styles.glow} pointer-events-none`} />
                     <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-white/5 blur-2xl" />
                     <div className="absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-cyan-500/10 blur-2xl" />
 
@@ -207,12 +212,19 @@ function SearchJobTopProductsPage() {
                         </div>
                       </div>
 
-                      <div className="rounded-[24px] bg-white/95 p-4 mb-4 shadow-inner">
-                        <img
-                          src={product.image}
-                          alt={product.title}
-                          className="w-full h-44 object-contain group-hover:scale-[1.04] transition duration-300"
-                        />
+                      {/* PRODUCT IMAGE POP-OUT ZONE */}
+                      <div className="relative h-[220px] mb-4 flex items-center justify-center">
+                        <div className="absolute inset-x-4 bottom-6 h-10 rounded-full bg-cyan-400/15 blur-2xl opacity-60 group-hover:opacity-90 transition duration-300" />
+
+                        <div className="absolute inset-0 rounded-[24px] bg-white/95 shadow-inner" />
+
+                        <div className="relative z-10 flex items-center justify-center w-full h-full">
+                          <img
+                            src={product.image}
+                            alt={product.title}
+                            className="h-44 w-auto max-w-[85%] object-contain transition-all duration-500 ease-out group-hover:-translate-y-10 group-hover:scale-[1.18] group-hover:rotate-[-8deg] drop-shadow-[0_18px_35px_rgba(15,23,42,0.25)]"
+                          />
+                        </div>
                       </div>
 
                       <h3 className="text-white text-lg font-bold leading-7 min-h-[56px] mb-3 line-clamp-2">
