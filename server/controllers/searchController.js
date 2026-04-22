@@ -225,7 +225,8 @@ const downloadTopProductsReport = async (req, res) => {
         message: "No top products found for this search job",
       });
     }
-//convert to report format
+
+    // Convert to report format
     const reportRows = topProducts.map((product, index) => ({
       rank: index + 1,
       title: product.title,
@@ -241,7 +242,7 @@ const downloadTopProductsReport = async (req, res) => {
       productUrl: product.productUrl,
     }));
 
-//csv columns order    
+    // CSV columns order
     const fields = [
       "rank",
       "title",
@@ -256,17 +257,21 @@ const downloadTopProductsReport = async (req, res) => {
       "keyword",
       "productUrl",
     ];
-//convert javascript object to csv text
+
+    // Convert JavaScript object to CSV text
     const parser = new Parser({ fields });
     const csv = parser.parse(reportRows);
 
     const safeKeyword = searchJob.keyword.replace(/\s+/g, "_").toLowerCase();
     const fileName = `${safeKeyword}_${searchJob.country}_top_products.csv`;
 
-    res.header("Content-Type", "text/csv");
-    res.attachment(fileName);
+    // UTF-8 BOM fix for Excel
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
 
-    return res.send(csv);
+    const csvWithBom = "\uFEFF" + csv;
+
+    return res.send(csvWithBom);
   } catch (error) {
     return res.status(500).json({
       success: false,
