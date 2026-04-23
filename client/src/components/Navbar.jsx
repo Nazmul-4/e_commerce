@@ -1,17 +1,46 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import robot from "../assets/robot.png";
+import { getSelectedJobId } from "../utils/selectedJob";
 
 function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.clear();
     window.location.href = "/login";
   };
 
+  const handleTopProductsClick = (e) => {
+    e.preventDefault();
+
+    const selectedJobId = getSelectedJobId();
+
+    if (selectedJobId) {
+      navigate(`/top-products/${selectedJobId}`);
+    } else {
+      navigate("/top-products");
+    }
+  };
+
+  const handleProductsClick = (e) => {
+    e.preventDefault();
+
+    const selectedJobId = getSelectedJobId();
+
+    if (selectedJobId) {
+      navigate(`/products/${selectedJobId}`);
+    } else {
+      navigate("/products");
+    }
+  };
+
   const isActive = (path) => {
     if (path === "/products") {
-      return location.pathname === "/products" || location.pathname.startsWith("/products/");
+      return (
+        location.pathname === "/products" ||
+        location.pathname.startsWith("/products/")
+      );
     }
 
     if (path === "/top-products") {
@@ -37,13 +66,9 @@ function Navbar() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="logo-wrapper relative h-16 w-16 shrink-0">
-              {/* outer ambient glow */}
               <div className="logo-aura absolute inset-0 rounded-full bg-cyan-400/20 blur-2xl" />
-
-              {/* rotating ring */}
               <div className="logo-rotating-ring absolute inset-0 rounded-full border border-cyan-400/20" />
 
-              {/* robot container */}
               <div className="logo-float relative h-16 w-16">
                 <img
                   src={robot}
@@ -51,12 +76,10 @@ function Navbar() {
                   className="relative z-20 h-16 w-16 object-contain drop-shadow-[0_8px_24px_rgba(34,211,238,0.25)]"
                 />
 
-                {/* moving scan beam */}
                 <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 h-10 w-10 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full">
                   <div className="logo-scan-line absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-300 to-transparent" />
                 </div>
 
-                {/* focus pulse near magnifying side */}
                 <div className="logo-focus-pulse absolute right-0 top-3 z-10 h-5 w-5 rounded-full border border-cyan-300/60" />
                 <div className="logo-focus-pulse-delayed absolute right-[-2px] top-[10px] z-10 h-6 w-6 rounded-full border border-blue-300/40" />
               </div>
@@ -77,13 +100,21 @@ function Navbar() {
               Dashboard
             </Link>
 
-            <Link to="/products" className={navItemClass("/products")}>
+            <a
+              href="/products"
+              onClick={handleProductsClick}
+              className={navItemClass("/products")}
+            >
               Products
-            </Link>
+            </a>
 
-            <Link to="/top-products" className={navItemClass("/top-products")}>
+            <a
+              href="/top-products"
+              onClick={handleTopProductsClick}
+              className={navItemClass("/top-products")}
+            >
               Top Products
-            </Link>
+            </a>
 
             <button
               onClick={handleLogout}

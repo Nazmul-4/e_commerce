@@ -1,120 +1,177 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api, { getAuthConfig } from "../services/api";
-import { saveSelectedJobId } from "../utils/selectedJob";
 
-function TopProductsPage() {
-  const navigate = useNavigate();
+function SearchJobProductsPage() {
+  const { jobId } = useParams();
 
-  const [searchHistory, setSearchHistory] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadPage = async () => {
-      try {
-        const { data } = await api.get("/search/my-history", getAuthConfig());
-        const jobs = data.searchJobs || [];
-        setSearchHistory(jobs);
-      } catch (error) {
-        console.error("Failed to fetch search history:", error.message);
-      }
-    };
+  // Filters
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [selectedSource, setSelectedSource] = useState("all");
+  const [sortBy, setSortBy] = useState("score");
 
-    loadPage();
-  }, []);
+  const fallbackImage =
+    "https://via.placeholder.com/400x300?text=Product+Image";
 
-  const handleOpenTopProductsPage = (jobId) => {
-    saveSelectedJobId(jobId);
-    navigate(`/top-products/${jobId}`);
-  };
-
-  const handleDownloadReport = async (jobId) => {
+  // Fetch products
+  const fetchProducts = async () => {
     try {
-      const response = await api.get(`/search/${jobId}/download-report`, {
-        ...getAuthConfig(),
-        responseType: "blob",
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-
-      const contentDisposition = response.headers["content-disposition"];
-      let fileName = "top_products_report.csv";
-
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="?(.+?)"?$/);
-        if (match && match[1]) {
-          fileName = match[1];
-        }
-      }
-
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      const res = await api.get(`/search/${jobId}/products`, getAuthConfig());
+      const data = res.data.products || [];
+      setProducts(data);
+      setFilteredProducts(data);
     } catch (error) {
-      console.error("Failed to download report:", error.message);
+      console.error("Error fetching products:", error.message);
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchProducts();
+  }, [jobId]);
+
+  // Apply filters
+  useEffect(() => {
+    let result = [...products];
+
+    // Price filter
+    if (minPrice) {
+      result = result.filter((p) => p.priceValue >= Number(minPrice));
+    }
+
+    if (maxPrice) {
+      result = result.filter((p) => p.priceValue <= Number(maxPrice));
+    }
+
+    // Source filter
+    if (selectedSource !== "all") {
+      result = result.filter(
+        (p) => p.sourceSite.toLowerCase() === selectedSource
+      );
+    }
+
+    // Sorting
+    if (sortBy === "priceLow") {
+      result.sort((a, b) => a.priceValue - b.priceValue);
+    } else if (sortBy === "priceHigh") {
+      result.sort((a, b) => b.priceValue - a.priceValue);
+    } else if (sortBy === "rating") {
+      result.sort((a, b) => b.rating - a.rating);
+    } else if (sortBy === "reviews") {
+      result.sort((a, b) => b.reviewCount - a.reviewCount);
+    } else {
+      result.sort((a, b) => b.score - a.score);
+    }
+
+    setFilteredProducts(result);
+  }, [products, minPrice, maxPrice, selectedSource, sortBy]);
 
   return (
     <div className="min-h-screen bg-slate-950">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        <div className="rounded-[32px] bg-slate-900 border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)] p-6 md:p-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-            Top Product Rankings
-          </h2>
-          <p className="text-slate-400 mb-6">
-            Choose a search job to open its own top-products page.
-          </p>
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
 
-          {searchHistory.length === 0 ? (
-            <div className="rounded-[28px] border border-dashed border-white/10 bg-slate-950/40 p-8 text-center text-slate-400">
-              No search jobs found.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {searchHistory.map((job) => (
-                <div
-                  key={job._id}
-                  className="rounded-[24px] border border-white/10 bg-slate-950/50 p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 transition"
-                >
-                  <div>
-                    <p className="font-semibold text-white capitalize">
-                      {job.keyword}
-                    </p>
-                    <p className="text-sm text-slate-400">
-                      {job.country} • {job.currency} • {job.status}
-                    </p>
-                  </div>
+        {/* FILTER PANEL */}
+        <div className="bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-wrap gap-4 items-center">
 
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handleOpenTopProductsPage(job._id)}
-                      className="rounded-2xl bg-emerald-600 text-white px-4 py-2.5 hover:bg-emerald-700 transition font-semibold"
-                    >
-                      View Top Products
-                    </button>
+          <input
+            type="number"
+            placeholder="Min Price"
+            className="px-3 py-2 rounded-xl bg-white/5 text-white"
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
+          />
 
-                    <button
-                      onClick={() => handleDownloadReport(job._id)}
-                      className="rounded-2xl bg-purple-600 text-white px-4 py-2.5 hover:bg-purple-700 transition font-semibold"
-                    >
-                      Download Report
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <input
+            type="number"
+            placeholder="Max Price"
+            className="px-3 py-2 rounded-xl bg-white/5 text-white"
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+          />
+
+          <select
+            className="px-3 py-2 rounded-xl bg-white/5 text-white"
+            value={selectedSource}
+            onChange={(e) => setSelectedSource(e.target.value)}
+          >
+            <option value="all">All Sources</option>
+            <option value="star tech">Star Tech</option>
+            <option value="ucc">UCC</option>
+          </select>
+
+          <select
+            className="px-3 py-2 rounded-xl bg-white/5 text-white"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="score">Sort by Score</option>
+            <option value="priceLow">Price Low → High</option>
+            <option value="priceHigh">Price High → Low</option>
+            <option value="rating">Rating</option>
+            <option value="reviews">Reviews</option>
+          </select>
+
         </div>
+
+        {/* PRODUCTS */}
+        {loading ? (
+          <p className="text-white">Loading...</p>
+        ) : filteredProducts.length === 0 ? (
+          <p className="text-yellow-400">No products found</p>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-6">
+            {filteredProducts.map((product) => (
+              <div
+                key={product._id}
+                className="bg-slate-900 border border-white/10 rounded-2xl p-4"
+              >
+                <img
+                  src={product.image}
+                  onError={(e) => (e.target.src = fallbackImage)}
+                  className="h-40 w-full object-contain"
+                />
+
+                <h3 className="text-white mt-3">{product.title}</h3>
+
+                <p className="text-green-400 font-bold mt-2">
+                  {product.priceText}
+                </p>
+
+                <p className="text-sm text-gray-400">
+                  ⭐ {product.rating} | {product.reviewCount} reviews
+                </p>
+
+                <p className="text-xs text-cyan-400 mt-1">
+                  {product.sourceSite}
+                </p>
+
+                <p className="text-xs text-white mt-1">
+                  Score: {product.score}
+                </p>
+
+                <a
+                  href={product.productUrl}
+                  target="_blank"
+                  className="block mt-3 bg-blue-500 text-white text-center py-2 rounded-lg"
+                >
+                  View Product
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export default TopProductsPage;
+export default SearchJobProductsPage;

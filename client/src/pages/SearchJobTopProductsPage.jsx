@@ -1,73 +1,47 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api, { getAuthConfig } from "../services/api";
-import { saveSelectedJobId } from "../utils/selectedJob";
+import { getSelectedJobId, saveSelectedJobId } from "../utils/selectedJob";
 
 function SearchJobTopProductsPage() {
-  const { jobId } = useParams();
+  const navigate = useNavigate();
+  const topProductsSectionRef = useRef(null);
 
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [selectedJobId, setSelectedJobId] = useState("");
   const [topProducts, setTopProducts] = useState([]);
-  const [jobInfo, setJobInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [searchText, setSearchText] = useState("");
+  const [selectedSource, setSelectedSource] = useState("all");
+  const [sortBy, setSortBy] = useState("scoreHigh");
 
   const fallbackImage =
     "https://via.placeholder.com/400x300?text=Product+Image";
 
-  const fetchJobAndTopProducts = async () => {
-    try {
-      saveSelectedJobId(jobId);
-
-      const historyRes = await api.get("/search/my-history", getAuthConfig());
-      const jobs = historyRes.data.searchJobs || [];
-      const currentJob = jobs.find((job) => job._id === jobId) || null;
-      setJobInfo(currentJob);
-
-      const topRes = await api.get(`/search/${jobId}/top-products`, getAuthConfig());
-      setTopProducts(topRes.data.topProducts || []);
-    } catch (error) {
-      console.error("Failed to fetch top products page data:", error.message);
-      setTopProducts([]);
-      setJobInfo(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDownloadReport = async () => {
-    try {
-      const response = await api.get(`/search/${jobId}/download-report`, {
-        ...getAuthConfig(),
-        responseType: "blob",
+  const scrollToTopProductsSection = () => {
+    if (topProductsSectionRef.current) {
+      topProductsSectionRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
       });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-
-      const contentDisposition = response.headers["content-disposition"];
-      let fileName = "top_products_report.csv";
-
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="?(.+?)"?$/);
-        if (match && match[1]) {
-          fileName = match[1];
-        }
-      }
-
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Failed to download report:", error.message);
     }
   };
 
-  useEffect(() => {
-    fetchJobAndTopProducts();
-  }, [jobId]);
+  const getSourceBadgeClass = (sourceSite = "") => {
+    const source = sourceSite.toLowerCase();
+
+    if (source.includes("star tech")) {
+      return "bg-cyan-500/15 text-cyan-300 border border-cyan-400/20";
+    }
+
+    if (source.includes("ucc")) {
+      return "bg-violet-500/15 text-violet-300 border border-violet-400/20";
+    }
+
+    return "bg-white/10 text-slate-300 border border-white/10";
+  };
 
   const getRankStyles = (index, sourceSite = "") => {
     const source = sourceSite.toLowerCase();
@@ -131,100 +105,297 @@ function SearchJobTopProductsPage() {
     };
   };
 
-  const getSourceBadgeClass = (sourceSite = "") => {
-    const source = sourceSite.toLowerCase();
+  const fetchTopProductsByJob = async (jobId, shouldScroll = false) => {
+    try {
+      setLoading(true);
 
-    if (source.includes("star tech")) {
-      return "bg-cyan-500/15 text-cyan-300 border border-cyan-400/20";
+      const { data } = await api.get(
+        `/search/${jobId}/top-products`,
+        getAuthConfig()
+      );
+
+      setTopProducts(data.topProducts || []);
+      setSelectedJobId(jobId);
+      saveSelectedJobId(jobId);
+
+      if (shouldScroll) {
+        setTimeout(() => {
+          scrollToTopProductsSection();
+        }, 150);
+      }
+    } catch (error) {
+      console.error("Failed to fetch top products:", error.message);
+      setTopProducts([]);
+    } finally {
+      setLoading(false);
     }
-
-    if (source.includes("ucc")) {
-      return "bg-violet-500/15 text-violet-300 border border-violet-400/20";
-    }
-
-    return "bg-white/10 text-slate-300 border border-white/10";
   };
+
+  const handleDownloadReport = async (jobId) => {
+    try {
+      const response = await api.get(`/search/${jobId}/download-report`, {
+        ...getAuthConfig(),
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+
+      const contentDisposition = response.headers["content-disposition"];
+      let fileName = "top_products_report.csv";
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (match && match[1]) {
+          fileName = match[1];
+        }
+      }
+
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download report:", error.message);
+    }
+  };
+
+  useEffect(() => {
+    const loadPage = async () => {
+      try {
+        setLoading(true);
+
+        const { data } = await api.get("/search/my-history", getAuthConfig());
+        const jobs = data.searchJobs || [];
+        setSearchHistory(jobs);
+
+        if (jobs.length === 0) {
+          setTopProducts([]);
+          setLoading(false);
+          return;
+        }
+
+        const savedJobId = getSelectedJobId();
+        const jobExists = jobs.some((job) => job._id === savedJobId);
+
+        const defaultJobId = jobExists ? savedJobId : jobs[0]._id;
+
+        await fetchTopProductsByJob(defaultJobId, false);
+      } catch (error) {
+        console.error("Failed to fetch search history:", error.message);
+        setLoading(false);
+      }
+    };
+
+    loadPage();
+  }, []);
+
+  const filteredTopProducts = useMemo(() => {
+    let result = [...topProducts];
+
+    if (searchText.trim()) {
+      const q = searchText.toLowerCase().trim();
+      result = result.filter(
+        (product) =>
+          product.title?.toLowerCase().includes(q) ||
+          product.sourceSite?.toLowerCase().includes(q) ||
+          product.brand?.toLowerCase?.().includes(q)
+      );
+    }
+
+    if (selectedSource !== "all") {
+      result = result.filter(
+        (product) => product.sourceSite?.toLowerCase() === selectedSource
+      );
+    }
+
+    if (sortBy === "scoreLow") {
+      result.sort((a, b) => (a.score || 0) - (b.score || 0));
+    } else if (sortBy === "priceLow") {
+      result.sort((a, b) => (a.priceValue || 0) - (b.priceValue || 0));
+    } else if (sortBy === "priceHigh") {
+      result.sort((a, b) => (b.priceValue || 0) - (a.priceValue || 0));
+    } else if (sortBy === "rating") {
+      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortBy === "reviews") {
+      result.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+    } else {
+      result.sort((a, b) => (b.score || 0) - (a.score || 0));
+    }
+
+    return result;
+  }, [topProducts, searchText, selectedSource, sortBy]);
 
   return (
     <div className="min-h-screen bg-slate-950">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)] p-6 md:p-8">
-          <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-fuchsia-500/10 blur-3xl" />
-          <div className="absolute -bottom-14 -left-8 h-40 w-40 rounded-full bg-cyan-500/10 blur-3xl" />
-
-          <div className="relative flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
+        <div className="rounded-[32px] bg-slate-900 border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)] p-6 md:p-8">
+          <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 mb-6">
             <div>
-              <p className="text-fuchsia-400 text-xs md:text-sm font-semibold tracking-[0.18em] uppercase mb-3">
-                Ranking Analytics
+              <h2 className="text-2xl md:text-3xl font-bold text-white">
+                Job Selector
+              </h2>
+              <p className="text-slate-400 text-sm mt-2">
+                Switch between search jobs and load their top-ranked products instantly.
               </p>
-
-              <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight mb-3">
-                Top Products
-              </h1>
-
-              {jobInfo ? (
-                <div className="flex flex-wrap items-center gap-2 text-sm md:text-base text-slate-300">
-                  <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                    Keyword:{" "}
-                    <span className="text-white font-semibold capitalize">
-                      {jobInfo.keyword}
-                    </span>
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                    {jobInfo.country}
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                    {jobInfo.currency}
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                    {jobInfo.status}
-                  </span>
-                </div>
-              ) : (
-                <p className="text-slate-400">Loading search job details...</p>
-              )}
             </div>
 
-            <button
-              onClick={handleDownloadReport}
-              className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-fuchsia-500 via-violet-500 to-purple-600 text-white px-6 py-3.5 hover:opacity-95 transition font-semibold shadow-[0_16px_40px_rgba(168,85,247,0.35)]"
-            >
-              Download Report
-            </button>
+            {selectedJobId && (
+              <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-slate-300 text-sm">
+                Active job selected
+              </div>
+            )}
           </div>
+
+          {searchHistory.length === 0 ? (
+            <div className="rounded-[28px] border border-dashed border-white/10 bg-slate-950/40 p-8 text-center text-slate-400">
+              No search jobs found.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {searchHistory.map((job) => (
+                <div
+                  key={job._id}
+                  className={`rounded-[24px] border p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 transition ${
+                    selectedJobId === job._id
+                      ? "border-emerald-500/40 bg-emerald-500/5"
+                      : "border-white/10 bg-slate-950/50"
+                  }`}
+                >
+                  <div>
+                    <p className="font-semibold text-white capitalize">
+                      {job.keyword}
+                    </p>
+                    <p className="text-sm text-slate-400">
+                      {job.country} • {job.currency} • {job.status}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => fetchTopProductsByJob(job._id, true)}
+                      className="rounded-2xl bg-emerald-600 text-white px-4 py-2.5 hover:bg-emerald-700 transition font-semibold"
+                    >
+                      View Top Products
+                    </button>
+
+                    <button
+                      onClick={() => handleDownloadReport(job._id)}
+                      className="rounded-2xl bg-purple-600 text-white px-4 py-2.5 hover:bg-purple-700 transition font-semibold"
+                    >
+                      Download Report
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="rounded-[32px] bg-slate-900 border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)] p-6 md:p-8">
-          <div className="flex items-center justify-between gap-4 mb-6">
+        <div
+          ref={topProductsSectionRef}
+          className="rounded-[32px] bg-slate-900 border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.35)] p-6 md:p-8"
+        >
+          <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 mb-6">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-white">
                 Top Ranked Products
               </h2>
               <p className="text-slate-400 text-sm mt-2">
-                Cross-source ranking with detail-enriched premium cards.
+                Default sorting is by highest score. Filters are optional.
               </p>
             </div>
 
-            {!loading && topProducts.length > 0 && (
+            {!loading && filteredTopProducts.length > 0 && (
               <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-slate-300 text-sm">
-                Showing <span className="text-white font-semibold">{topProducts.length}</span> ranked products
+                Showing{" "}
+                <span className="text-white font-semibold">
+                  {filteredTopProducts.length}
+                </span>{" "}
+                products
               </div>
             )}
+          </div>
+
+          <div className="mb-6 rounded-[28px] bg-slate-950/50 border border-white/10 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              <input
+                type="text"
+                placeholder="Optional search..."
+                className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500 outline-none focus:border-cyan-400/30"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+
+              <select
+                className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-cyan-400/30"
+                value={selectedSource}
+                onChange={(e) => setSelectedSource(e.target.value)}
+              >
+                <option value="all" className="bg-slate-900">
+                  All Sources
+                </option>
+                <option value="star tech" className="bg-slate-900">
+                  Star Tech
+                </option>
+                <option value="ucc" className="bg-slate-900">
+                  UCC
+                </option>
+              </select>
+
+              <select
+                className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-cyan-400/30"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="scoreHigh" className="bg-slate-900">
+                  Score High → Low
+                </option>
+                <option value="scoreLow" className="bg-slate-900">
+                  Score Low → High
+                </option>
+                <option value="priceLow" className="bg-slate-900">
+                  Price Low → High
+                </option>
+                <option value="priceHigh" className="bg-slate-900">
+                  Price High → Low
+                </option>
+                <option value="rating" className="bg-slate-900">
+                  Rating High → Low
+                </option>
+                <option value="reviews" className="bg-slate-900">
+                  Reviews High → Low
+                </option>
+              </select>
+
+              <button
+                onClick={() => {
+                  setSearchText("");
+                  setSelectedSource("all");
+                  setSortBy("scoreHigh");
+                }}
+                className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition font-semibold"
+              >
+                Reset Filters
+              </button>
+            </div>
           </div>
 
           {loading ? (
             <div className="rounded-[28px] bg-slate-950/40 p-8 text-center text-slate-300">
               Loading top products...
             </div>
-          ) : topProducts.length === 0 ? (
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-2xl p-4">
-              No top products found for this search job.
+          ) : filteredTopProducts.length === 0 ? (
+            <div className="rounded-[28px] bg-slate-950/40 p-8 text-center text-yellow-400">
+              No products found
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-              {topProducts.map((product, index) => {
+              {filteredTopProducts.map((product, index) => {
                 const styles = getRankStyles(index, product.sourceSite);
 
                 return (
@@ -232,7 +403,9 @@ function SearchJobTopProductsPage() {
                     key={product._id}
                     className={`group relative overflow-visible rounded-[30px] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 px-5 pt-5 pb-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(0,0,0,0.45)] transition-all duration-300 ring-1 ${styles.ring}`}
                   >
-                    <div className={`absolute inset-0 rounded-[30px] bg-gradient-to-br ${styles.glow} pointer-events-none`} />
+                    <div
+                      className={`absolute inset-0 rounded-[30px] bg-gradient-to-br ${styles.glow} pointer-events-none`}
+                    />
                     <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-white/5 blur-2xl" />
                     <div className="absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-cyan-500/10 blur-2xl" />
 
@@ -244,10 +417,12 @@ function SearchJobTopProductsPage() {
                           <span>#{index + 1}</span>
                         </div>
 
-                        <div className="text-right">
-                          <p className={`text-xs font-semibold ${styles.text}`}>
-                            {styles.label}
-                          </p>
+                        <div
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${getSourceBadgeClass(
+                            product.sourceSite
+                          )}`}
+                        >
+                          {product.sourceSite}
                         </div>
                       </div>
 
@@ -276,12 +451,8 @@ function SearchJobTopProductsPage() {
                           {product.priceText}
                         </p>
 
-                        <div
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${getSourceBadgeClass(
-                            product.sourceSite
-                          )}`}
-                        >
-                          {product.sourceSite}
+                        <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-semibold">
+                          {product.currency}
                         </div>
                       </div>
 
@@ -326,11 +497,13 @@ function SearchJobTopProductsPage() {
                         <div className="mb-5 rounded-2xl bg-white/5 border border-white/10 p-3">
                           <p className="text-slate-400 text-xs mb-2">Quick Specs</p>
                           <ul className="space-y-1 text-sm text-slate-200">
-                            {product.shortSpecs.slice(0, 3).map((spec, specIndex) => (
-                              <li key={specIndex} className="line-clamp-1">
-                                • {spec}
-                              </li>
-                            ))}
+                            {product.shortSpecs
+                              .slice(0, 3)
+                              .map((spec, specIndex) => (
+                                <li key={specIndex} className="line-clamp-1">
+                                  • {spec}
+                                </li>
+                              ))}
                           </ul>
                         </div>
                       )}
