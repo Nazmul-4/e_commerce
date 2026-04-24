@@ -21,7 +21,7 @@ const registerUser = async (req, res) => {
         message: "Invalid country selected",
       });
     }
-
+//prevent duplicate registration with the same email
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -92,6 +92,8 @@ const loginUser = async (req, res) => {
       });
     }
 
+    
+  //generate a JWT token for the authenticated user  
     const token = generateToken(user);
 
     return res.status(200).json({

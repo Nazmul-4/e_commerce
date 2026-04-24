@@ -5,54 +5,42 @@ const calculateScore = (product) => {
   const title = (product.title || "").toLowerCase();
   const keyword = (product.keyword || "").toLowerCase();
   const sourceSite = (product.sourceSite || "").toLowerCase();
+  const brand = (product.brand || "").toLowerCase();
+  const availability = (product.availability || "").toLowerCase();
 
   let score = 0;
 
-  // Main quality score
-  score += rating * 18;
-  score += reviewCount * 1.2;
+  score += rating * 20;
+  score += Math.min(reviewCount * 1.3, 70);
 
-  // Price contribution
   if (priceValue > 0) {
-    score += Math.min(priceValue / 3000, 18);
+    score += Math.min(priceValue / 4000, 25);
   }
 
-  // Strong exact keyword match
   if (keyword && title.includes(keyword)) {
-    score += 25;
+    score += 30;
   }
 
-  // Word-by-word keyword bonus
-  const keywordTerms = keyword
+  keyword
     .split(/\s+/)
-    .map((term) => term.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .forEach((term) => {
+      if (title.includes(term)) score += 8;
+    });
 
-  keywordTerms.forEach((term) => {
-    if (term && title.includes(term)) {
-      score += 8;
-    }
-  });
-
-  // Source weighting
-  if (sourceSite.includes("star tech")) {
-    score += 8;
+  if (brand) score += 8;
+  if (availability.includes("in stock") || availability.includes("available")) {
+    score += 10;
   }
 
-  if (sourceSite.includes("ucc")) {
-    score += 6;
-  }
+  if (sourceSite.includes("star tech")) score += 8;
+  if (sourceSite.includes("ucc")) score += 7;
 
-  // Quality penalties
-  if (rating <= 0) score -= 8;
-  if (reviewCount <= 0) score -= 8;
-  if (priceValue <= 0) score -= 10;
+  if (rating <= 0) score -= 10;
+  if (reviewCount <= 0) score -= 10;
+  if (priceValue <= 0) score -= 15;
 
-  if (score < 0) {
-    score = 0;
-  }
-
-  return Number(score.toFixed(2));
+  return Number(Math.max(score, 0).toFixed(2));
 };
 
 module.exports = calculateScore;

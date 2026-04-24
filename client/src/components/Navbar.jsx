@@ -116,6 +116,10 @@ function Navbar() {
               Top Products
             </a>
 
+            <Link to="/favorites" className={navItemClass("/favorites")}>
+              Favorites
+            </Link>
+
             <button
               onClick={handleLogout}
               className="ml-0 lg:ml-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-red-500 to-rose-500 text-white text-sm font-semibold hover:opacity-95 transition-all duration-300 shadow-[0_10px_30px_rgba(239,68,68,0.28)]"

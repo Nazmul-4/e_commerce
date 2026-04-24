@@ -20,6 +20,7 @@ function DashboardPage() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [topKeyword, setTopKeyword] = useState("N/A");
 
+  //generate user initials for avatar fallback
   const userInitials = useMemo(() => {
     if (!user?.name) return "CP";
     const parts = user.name.trim().split(" ");
@@ -27,6 +28,7 @@ function DashboardPage() {
     return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
   }, [user]);
 
+  //fetch current user info
   const fetchCurrentUser = async () => {
     try {
       const { data } = await api.get("/auth/me", getAuthConfig());
@@ -36,6 +38,8 @@ function DashboardPage() {
     }
   };
 
+
+  //fetch search history and calculate analytics
   const fetchSearchHistory = async () => {
     try {
       const { data } = await api.get("/search/my-history", getAuthConfig());
@@ -68,7 +72,7 @@ function DashboardPage() {
       console.error("Failed to fetch search history:", error.message);
     }
   };
-
+//handle creating new search job
   const handleCreateSearch = async (e) => {
     e.preventDefault();
 
@@ -98,6 +102,7 @@ function DashboardPage() {
     }
   };
 
+  //handle generating products for a search job
   const handleGenerateProducts = async (jobId) => {
     try {
       setGenerateLoadingId(jobId);
@@ -115,16 +120,18 @@ function DashboardPage() {
     }
   };
 
+  //navigate to products page for a search job
   const handleGoToProductsPage = (jobId) => {
     saveSelectedJobId(jobId);
     navigate(`/products/${jobId}`);
   };
-
+//navigate to top products page for a search job
   const handleGoToTopProductsPage = (jobId) => {
     saveSelectedJobId(jobId);
     navigate(`/top-products/${jobId}`);
   };
 
+  //get badge class based on job status
   const getStatusBadgeClass = (status) => {
     if (status === "completed") {
       return "bg-emerald-100 text-emerald-700 border border-emerald-200";
@@ -137,7 +144,7 @@ function DashboardPage() {
     }
     return "bg-red-100 text-red-700 border border-red-200";
   };
-
+//load user info and search history on component mount
   useEffect(() => {
     const loadData = async () => {
       await fetchCurrentUser();
@@ -147,7 +154,7 @@ function DashboardPage() {
 
     loadData();
   }, []);
-
+//show loading state while fetching data
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">

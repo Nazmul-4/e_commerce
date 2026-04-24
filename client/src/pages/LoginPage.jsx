@@ -28,7 +28,7 @@ function LoginPage() {
       setLoading(true);
 
       const { data } = await api.post("/auth/login", form);
-
+//store jwt token and user info in localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 

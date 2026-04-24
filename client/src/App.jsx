@@ -7,6 +7,7 @@ import TopProductsPage from "./pages/TopProductsPage";
 import SearchJobProductsPage from "./pages/SearchJobProductsPage";
 import SearchJobTopProductsPage from "./pages/SearchJobTopProductsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import FavoritesPage from "./pages/FavoritesPage";
 
 function App() {
   const token = localStorage.getItem("token");
@@ -72,6 +73,14 @@ function App() {
           element={
             <ProtectedRoute>
               <SearchJobTopProductsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/favorites"
+          element={
+            <ProtectedRoute>
+              <FavoritesPage />
             </ProtectedRoute>
           }
         />
