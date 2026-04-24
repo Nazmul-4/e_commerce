@@ -2,6 +2,19 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 
+// ✅ COOKIE PART START
+const getCookieOptions = () => {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+};
+// ✅ COOKIE PART END
+
 // Register controller
 const registerUser = async (req, res) => {
   try {
@@ -21,7 +34,8 @@ const registerUser = async (req, res) => {
         message: "Invalid country selected",
       });
     }
-//prevent duplicate registration with the same email
+
+    // prevent duplicate registration with the same email
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -92,14 +106,16 @@ const loginUser = async (req, res) => {
       });
     }
 
-    
-  //generate a JWT token for the authenticated user  
+    // generate a JWT token for the authenticated user
     const token = generateToken(user);
+
+    // ✅ COOKIE PART START
+    res.cookie("token", token, getCookieOptions());
+    // ✅ COOKIE PART END
 
     return res.status(200).json({
       success: true,
       message: "Login successful",
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -116,6 +132,25 @@ const loginUser = async (req, res) => {
     });
   }
 };
+
+// ✅ COOKIE PART START
+const logoutUser = async (req, res) => {
+  try {
+    res.clearCookie("token", getCookieOptions());
+
+    return res.status(200).json({
+      success: true,
+      message: "Logout successful",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Logout failed",
+      error: error.message,
+    });
+  }
+};
+// ✅ COOKIE PART END
 
 // Current logged-in user controller
 const getMe = async (req, res) => {
@@ -146,5 +181,6 @@ module.exports = {
   testAuth,
   registerUser,
   loginUser,
+  logoutUser,
   getMe,
 };

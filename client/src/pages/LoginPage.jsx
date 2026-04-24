@@ -28,9 +28,11 @@ function LoginPage() {
       setLoading(true);
 
       const { data } = await api.post("/auth/login", form);
-//store jwt token and user info in localStorage
-      localStorage.setItem("token", data.token);
+
+      // ✅ COOKIE PART START
+      localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("user", JSON.stringify(data.user));
+      // ✅ COOKIE PART END
 
       navigate("/dashboard");
     } catch (err) {

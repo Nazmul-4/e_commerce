@@ -1,14 +1,23 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import robot from "../assets/robot.png";
 import { getSelectedJobId } from "../utils/selectedJob";
+import api from "../services/api"; // ✅ COOKIE PART: needed for backend logout
 
 function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = "/login";
+  const handleLogout = async () => {
+    // ✅ COOKIE PART START
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Logout failed:", error.message);
+    } finally {
+      localStorage.clear();
+      navigate("/login");
+    }
+    // ✅ COOKIE PART END
   };
 
   const handleTopProductsClick = (e) => {
